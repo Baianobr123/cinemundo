@@ -47,22 +47,41 @@ const XTREAM_SERVIDORES = {
 };
 
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
-
-// CHAVE DO TMDB QUE JÁ ESTAVA CONFIGURADA POR TI
-const TMDB_KEY = "3d76e73c4d7ec9f5a0be5fb5c414dfdb";
+const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 
 // ==========================================
 // MOTOR DE BUSCA E INTEGRAÇÃO DE CATEGORIAS
 // ==========================================
+async function fetchSeguro(url) {
+    // Se estiver rodando no GitHub Pages (HTTPS), encapsula no Proxy de forma robusta
+    if (window.location.protocol === "https:") {
+        try {
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
+            if (response.ok) {
+                const json = await response.json();
+                return JSON.parse(json.contents); // AllOrigins joga a resposta real dentro de .contents
+            }
+        } catch (e) {
+            console.error("Erro no proxy:", e);
+        }
+    } else {
+        // Se estiver rodando local (Ficheiro E:/), faz a requisição direta padrão
+        try {
+            const response = await fetch(url);
+            if (response.ok) return await response.json();
+        } catch (e) {
+            console.error("Erro direto:", e);
+        }
+    }
+    return null;
+}
+
 async function carregarDadosXtream() {
     const { server, username, password } = XTREAM_CONFIG;
-    
-    // DEFINIÇÃO DO PROXY PARA EVITAR CONTEÚDO MISTO (HTTPS/HTTP) NO GITHUB PAGES
-    const proxyUrl = "https://api.allorigins.win/raw?url=";
-    const targetUrl = `${server}/player_api.php?username=${username}&password=${password}`;
-    const baseUrl = window.location.protocol === "https:" ? `${proxyUrl}${encodeURIComponent(targetUrl)}` : targetUrl;
-
+    const baseUrl = `${server}/player_api.php?username=${username}&password=${password}`;
     let baseLista = [];
+
     const termosProibidos = ["xxx", "adulto", "porn", "sexy", "erotico", "hentai", "18+", "playboy", "venus", "redlight"];
     const capaPadrao = "https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg";
 
@@ -77,122 +96,97 @@ async function carregarDadosXtream() {
         return nomeOriginal.replace(/\.[^/.]+$/, "").replace(/_/g, " ").replace(/-/g, " ").trim();
     }
 
-    async function obterCategorias(action) {
-        let mapa = {};
-        try {
-            const URLAction = window.location.protocol === "https:" 
-                ? `${proxyUrl}${encodeURIComponent(`${server}/player_api.php?username=${username}&password=${password}&action=${action}`)}`
-                : `${server}/player_api.php?username=${username}&password=${password}&action=${action}`;
-                
-            const res = await fetch(URLAction);
-            if (res.ok) {
-                const dados = await res.json();
-                if (Array.isArray(dados)) {
-                    dados.forEach(c => { mapa[c.category_id] = c.category_name; });
-                }
-            }
-        } catch(e){}
-        return mapa;
-    }
-
     try {
-        const catLiveMap = await obterCategorias("get_live_categories");
-        const catVodMap = await obterCategorias("get_vod_categories");
-        const catSeriesMap = await obterCategorias("get_series_categories");
+        // Chamadas usando nossa função inteligente de Fetch com Proxy Integrado
+        const catLiveMap = {};
+        const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
+        if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
+
+        const catVodMap = {};
+        const dadosCatVod = await fetchSeguro(`${baseUrl}&action=get_vod_categories`);
+        if (Array.isArray(dadosCatVod)) dadosCatVod.forEach(c => { catVodMap[c.category_id] = c.category_name; });
+
+        const catSeriesMap = {};
+        const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
+        if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
         // 1. CARREGAR CANAIS AO VIVO
-        const URLLive = window.location.protocol === "https:" ? `${baseUrl}&action=get_live_streams` : `${targetUrl}&action=get_live_streams`;
-        const resLive = await fetch(URLLive);
-        if (resLive.ok) {
-            const liveData = await resLive.json();
-            if (Array.isArray(liveData)) {
-                liveData.forEach(item => {
-                    const grupo = catLiveMap[item.category_id] || "Canais de TV";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "tv";
-                        if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
-                            tipo = "24h";
-                        }
-                        baseLista.push({
-                            id_unico: `live_${item.stream_id}`,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
-                            group: grupo,
-                            url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            tipoOriginal: tipo
-                        });
+        const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
+        if (Array.isArray(liveData)) {
+            liveData.forEach(item => {
+                const grupo = catLiveMap[item.category_id] || "Canais de TV";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "tv";
+                    if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
+                        tipo = "24h";
                     }
-                });
-            }
+                    baseLista.push({
+                        nome: limparNome(item.name),
+                        logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                        group: grupo,
+                        url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
+                        tipoOriginal: tipo
+                    });
+                }
+            });
         }
 
         // 2. CARREGAR FILMES (VOD)
-        const URLMovies = window.location.protocol === "https:" ? `${baseUrl}&action=get_vod_streams` : `${targetUrl}&action=get_vod_streams`;
-        const resMovies = await fetch(URLMovies);
-        if (resMovies.ok) {
-            const moviesData = await resMovies.json();
-            if (Array.isArray(moviesData)) {
-                moviesData.forEach(item => {
-                    const grupo = catVodMap[item.category_id] || "Filmes";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "filme";
-                        if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) {
-                            tipo = "anime";
-                        }
-                        
-                        const nomeLimpo = limparNome(item.name);
-                        const capaProvisoria = item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao;
-
-                        baseLista.push({
-                            id_unico: `movie_${item.stream_id}`,
-                            nome: nomeLimpo,
-                            logo: capaProvisoria,
-                            group: grupo,
-                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
-                            tipoOriginal: tipo
-                        });
+        const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
+        if (Array.isArray(moviesData)) {
+            moviesData.forEach(item => {
+                const grupo = catVodMap[item.category_id] || "Filmes";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "filme";
+                    if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) {
+                        tipo = "anime";
                     }
-                });
-            }
+                    
+                    const nomeLimpo = limparNome(item.name);
+                    const capaProvisoria = item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao;
+
+                    baseLista.push({
+                        id_unico: `movie_${item.stream_id}`,
+                        nome: nomeLimpo,
+                        logo: capaProvisoria,
+                        group: grupo,
+                        url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
+                        tipoOriginal: tipo
+                    });
+                }
+            });
         }
 
         // 3. CARREGAR SÉRIES E ANIMES
-        const URLSeries = window.location.protocol === "https:" ? `${baseUrl}&action=get_series` : `${targetUrl}&action=get_series`;
-        const resSeries = await fetch(URLSeries);
-        if (resSeries.ok) {
-            const seriesData = await resSeries.json();
-            if (Array.isArray(seriesData)) {
-                seriesData.forEach(item => {
-                    const grupo = catSeriesMap[item.category_id] || "Séries";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "series";
-                        const gLow = grupo.toLowerCase();
-                        const nLow = item.name.toLowerCase();
-                        
-                        if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime") || nLow.includes("legendado") || nLow.includes("dublado")) {
-                            tipo = "anime";
-                        }
-
-                        const nomeLimpo = limparNome(item.name);
-                        const capaProvisoria = item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao;
-
-                        baseLista.push({
-                            id_unico: `series_${item.series_id}`,
-                            nome: nomeLimpo,
-                            logo: capaProvisoria,
-                            group: grupo,
-                            url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            tipoOriginal: tipo
-                        });
+        const seriesData = await fetchSeguro(`${baseUrl}&action=get_series`);
+        if (Array.isArray(seriesData)) {
+            seriesData.forEach(item => {
+                const grupo = catSeriesMap[item.category_id] || "Séries";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "series";
+                    const gLow = grupo.toLowerCase();
+                    const nLow = item.name.toLowerCase();
+                    
+                    if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime") || nLow.includes("legendado") || nLow.includes("dublado")) {
+                        tipo = "anime";
                     }
-                });
-            }
-        }
 
-        // DISPARA AS CAPAS DO TMDB EM SEGUNDO PLANO LOGO DEPOIS DO CARREGAMENTO
-        if (TMDB_KEY) {
-            setTimeout(() => otimizarCapasComTMDB(baseLista), 50);
+                    const nomeLimpo = limparNome(item.name);
+                    const capaProvisoria = item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao;
+
+                    baseLista.push({
+                        id_unico: `series_${item.series_id}`,
+                        nome: nomeLimpo,
+                        logo: capaProvisoria,
+                        group: grupo,
+                        url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
+                        tipoOriginal: tipo
+                    });
+                }
+            });
         }
+        
+        setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
 
     } catch (e) {
         console.error("Erro geral na sincronização:", e);
@@ -200,15 +194,12 @@ async function carregarDadosXtream() {
     return baseLista;
 }
 
-// INTEGRAÇÃO ASSÍNCRONA E INDEPENDENTE COM O TMDB QUE JÁ TINHAS
-async function otimizarCapasComTMDB(lista) {
-    // Processa os itens em blocos paralelos para ser ultra rápido
-    const chunk = 5;
-    for (let i = 0; i < lista.length; i += chunk) {
-        const partes = lista.slice(i, i + chunk);
-        await Promise.all(partes.map(async (item) => {
-            if (item.tipoOriginal === 'tv' || item.tipoOriginal === '24h') return;
-            
+async function processarCapasEmSegundoPlano(lista) {
+    const itensParaBuscar = lista.filter(item => item.tipoOriginal !== 'tv' && item.tipoOriginal !== '24h');
+    const tamanhoBloco = 5;
+    for (let i = 0; i < itensParaBuscar.length; i += tamanhoBloco) {
+        const bloco = itensParaBuscar.slice(i, i + tamanhoBloco);
+        await Promise.all(bloco.map(async (item) => {
             let termoBusca = item.nome
                 .replace(/^[^\s|]+\s*\|\s*/gi, "") 
                 .replace(/\b(globoplay|netflix|prime|disney|hbo|apple|max|paramount|crunchyroll)\b/gi, "") 
@@ -225,17 +216,13 @@ async function otimizarCapasComTMDB(lista) {
                     const dados = await res.json();
                     if (dados.results && dados.results.length > 0 && dados.results[0].poster_path) {
                         const novaCapa = `https://image.tmdb.org/t/p/w500${dados.results[0].poster_path}`;
-                        
                         item.logo = novaCapa;
-
                         const imgElemento = document.querySelector(`[data-id-capa="${item.id_unico}"]`);
-                        if (imgElemento) {
-                            imgElemento.src = novaCapa;
-                        }
+                        if (imgElemento) imgElemento.src = novaCapa;
                     }
                 }
             } catch(e){}
         }));
-        await new Promise(r => setTimeout(r, 150)); // Evita bloqueio de IP por excesso de requisições por segundo
+        await new Promise(r => setTimeout(r, 60));
     }
 }
