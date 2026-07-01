@@ -47,16 +47,22 @@ const XTREAM_SERVIDORES = {
 };
 
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
-const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
+
+// CHAVE DO TMDB QUE JÁ ESTAVA CONFIGURADA POR TI
+const TMDB_KEY = "3d76e73c4d7ec9f5a0be5fb5c414dfdb";
 
 // ==========================================
 // MOTOR DE BUSCA E INTEGRAÇÃO DE CATEGORIAS
 // ==========================================
 async function carregarDadosXtream() {
     const { server, username, password } = XTREAM_CONFIG;
-    const baseUrl = `${server}/player_api.php?username=${username}&password=${password}`;
-    let baseLista = [];
+    
+    // DEFINIÇÃO DO PROXY PARA EVITAR CONTEÚDO MISTO (HTTPS/HTTP) NO GITHUB PAGES
+    const proxyUrl = "https://api.allorigins.win/raw?url=";
+    const targetUrl = `${server}/player_api.php?username=${username}&password=${password}`;
+    const baseUrl = window.location.protocol === "https:" ? `${proxyUrl}${encodeURIComponent(targetUrl)}` : targetUrl;
 
+    let baseLista = [];
     const termosProibidos = ["xxx", "adulto", "porn", "sexy", "erotico", "hentai", "18+", "playboy", "venus", "redlight"];
     const capaPadrao = "https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg";
 
@@ -74,7 +80,11 @@ async function carregarDadosXtream() {
     async function obterCategorias(action) {
         let mapa = {};
         try {
-            const res = await fetch(`${baseUrl}&action=${action}`);
+            const URLAction = window.location.protocol === "https:" 
+                ? `${proxyUrl}${encodeURIComponent(`${server}/player_api.php?username=${username}&password=${password}&action=${action}`)}`
+                : `${server}/player_api.php?username=${username}&password=${password}&action=${action}`;
+                
+            const res = await fetch(URLAction);
             if (res.ok) {
                 const dados = await res.json();
                 if (Array.isArray(dados)) {
@@ -90,8 +100,9 @@ async function carregarDadosXtream() {
         const catVodMap = await obterCategorias("get_vod_categories");
         const catSeriesMap = await obterCategorias("get_series_categories");
 
-        // 1. CARREGAR CANAIS AO VIVO (Instantâneo)
-        const resLive = await fetch(`${baseUrl}&action=get_live_streams`);
+        // 1. CARREGAR CANAIS AO VIVO
+        const URLLive = window.location.protocol === "https:" ? `${baseUrl}&action=get_live_streams` : `${targetUrl}&action=get_live_streams`;
+        const resLive = await fetch(URLLive);
         if (resLive.ok) {
             const liveData = await resLive.json();
             if (Array.isArray(liveData)) {
@@ -103,6 +114,7 @@ async function carregarDadosXtream() {
                             tipo = "24h";
                         }
                         baseLista.push({
+                            id_unico: `live_${item.stream_id}`,
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
@@ -114,8 +126,9 @@ async function carregarDadosXtream() {
             }
         }
 
-        // 2. CARREGAR FILMES (VOD) - Sem travar o loop com await do TMDB
-        const resMovies = await fetch(`${baseUrl}&action=get_vod_streams`);
+        // 2. CARREGAR FILMES (VOD)
+        const URLMovies = window.location.protocol === "https:" ? `${baseUrl}&action=get_vod_streams` : `${targetUrl}&action=get_vod_streams`;
+        const resMovies = await fetch(URLMovies);
         if (resMovies.ok) {
             const moviesData = await resMovies.json();
             if (Array.isArray(moviesData)) {
@@ -131,9 +144,9 @@ async function carregarDadosXtream() {
                         const capaProvisoria = item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao;
 
                         baseLista.push({
-                            id_unico: `movie_${item.stream_id}`, // ID para atualizar depois em segundo plano
+                            id_unico: `movie_${item.stream_id}`,
                             nome: nomeLimpo,
-                            logo: capaProvisoria, // Entra a capa antiga para carregar na hora!
+                            logo: capaProvisoria,
                             group: grupo,
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                             tipoOriginal: tipo
@@ -143,8 +156,9 @@ async function carregarDadosXtream() {
             }
         }
 
-        // 3. CARREGAR SÉRIES E ANIMES - Instantâneo
-        const resSeries = await fetch(`${baseUrl}&action=get_series`);
+        // 3. CARREGAR SÉRIES E ANIMES
+        const URLSeries = window.location.protocol === "https:" ? `${baseUrl}&action=get_series` : `${targetUrl}&action=get_series`;
+        const resSeries = await fetch(URLSeries);
         if (resSeries.ok) {
             const seriesData = await resSeries.json();
             if (Array.isArray(seriesData)) {
@@ -174,9 +188,11 @@ async function carregarDadosXtream() {
                 });
             }
         }
-        
-        // Dispara a busca pesada em segundo plano para não travar o carregamento inicial do app!
-        setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
+
+        // DISPARA AS CAPAS DO TMDB EM SEGUNDO PLANO LOGO DEPOIS DO CARREGAMENTO
+        if (TMDB_KEY) {
+            setTimeout(() => otimizarCapasComTMDB(baseLista), 50);
+        }
 
     } catch (e) {
         console.error("Erro geral na sincronização:", e);
@@ -184,19 +200,15 @@ async function carregarDadosXtream() {
     return baseLista;
 }
 
-// =========================================================================
-// MOTOR ASSÍNCRONO: Executa a busca do TMDB de forma inteligente em background
-// =========================================================================
-async function processarCapasEmSegundoPlano(lista) {
-    // Filtra apenas itens que precisam de consulta (Filmes, Séries e Animes)
-    const itensParaBuscar = lista.filter(item => item.tipoOriginal !== 'tv' && item.tipoOriginal !== '24h');
-    
-    // Processa pequenos blocos por vez para não estourar o limite de requisições da API do TMDB
-    const tamanhoBloco = 5;
-    for (let i = 0; i < itensParaBuscar.length; i += tamanhoBloco) {
-        const bloco = itensParaBuscar.slice(i, i + tamanhoBloco);
-        
-        await Promise.all(bloco.map(async (item) => {
+// INTEGRAÇÃO ASSÍNCRONA E INDEPENDENTE COM O TMDB QUE JÁ TINHAS
+async function otimizarCapasComTMDB(lista) {
+    // Processa os itens em blocos paralelos para ser ultra rápido
+    const chunk = 5;
+    for (let i = 0; i < lista.length; i += chunk) {
+        const partes = lista.slice(i, i + chunk);
+        await Promise.all(partes.map(async (item) => {
+            if (item.tipoOriginal === 'tv' || item.tipoOriginal === '24h') return;
+            
             let termoBusca = item.nome
                 .replace(/^[^\s|]+\s*\|\s*/gi, "") 
                 .replace(/\b(globoplay|netflix|prime|disney|hbo|apple|max|paramount|crunchyroll)\b/gi, "") 
@@ -214,10 +226,8 @@ async function processarCapasEmSegundoPlano(lista) {
                     if (dados.results && dados.results.length > 0 && dados.results[0].poster_path) {
                         const novaCapa = `https://image.tmdb.org/t/p/w500${dados.results[0].poster_path}`;
                         
-                        // Atualiza o objeto na memória principal
                         item.logo = novaCapa;
 
-                        // Se a imagem estiver renderizada no ecrã neste momento, atualiza em tempo real!
                         const imgElemento = document.querySelector(`[data-id-capa="${item.id_unico}"]`);
                         if (imgElemento) {
                             imgElemento.src = novaCapa;
@@ -226,8 +236,6 @@ async function processarCapasEmSegundoPlano(lista) {
                 }
             } catch(e){}
         }));
-        
-        // Pequena pausa impercetível de 60ms entre blocos para manter a navegação super fluida
-        await new Promise(r => setTimeout(r, 60));
+        await new Promise(r => setTimeout(r, 150)); // Evita bloqueio de IP por excesso de requisições por segundo
     }
 }
