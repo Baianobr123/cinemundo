@@ -50,44 +50,28 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 
 // ==========================================
-// MOTOR DE BUSCA E INTEGRAÇÃO DE CATEGORIAS
+// MOTOR DE REQUISIÇÃO DIRETA COM TIMEOUT RÁPIDO
 // ==========================================
 async function fetchSeguro(url) {
-    // Se estiver rodando no GitHub Pages (HTTPS)
-    if (window.location.protocol === "https:") {
-        // Lista de proxies de backup rápidos caso o principal falhe
-        const proxies = [
-            (u) => `https://cors-anywhere.herokuapp.com/${u}`,
-            (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`
-        ];
+    // Proxy ultrarápido que funciona como fallback apenas em HTTPS
+    const UrlFinal = window.location.protocol === "https:" 
+        ? `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+        : url;
 
-        for (let proxy do proxies) {
-            try {
-                const urlProxied = proxy(url);
-                // Define um tempo limite de 4 segundos para não travar o app
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-                const response = await fetch(urlProxied, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    const dados = await response.json();
-                    // Se for o AllOrigins, o json real vem dentro de .contents, se for o cors-anywhere vem direto
-                    return dados.contents ? JSON.parse(dados.contents) : dados;
-                }
-            } catch (e) {
-                console.warn("Tentando próximo proxy devido a erro:", e.message);
-            }
-        }
-    }
-
-    // Fallback: Tentativa direta (essencial se rodar local ou se o servidor IPTV aceitar CORS)
     try {
-        const response = await fetch(url);
-        if (response.ok) return await response.json();
-    } catch (e) {}
-    
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 segundos máximos para não travar
+
+        const response = await fetch(UrlFinal, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const dados = await response.json();
+            return dados.contents ? JSON.parse(dados.contents) : dados;
+        }
+    } catch (e) {
+        console.error("Conexão recusada ou lenta no painel do servidor.");
+    }
     return null;
 }
 
@@ -111,7 +95,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CATEGORIAS
+        // Busca Categorias de forma assíncrona tolerante a falhas
         const catLiveMap = {};
         const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
         if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
@@ -124,16 +108,14 @@ async function carregarDadosXtream() {
         const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
         if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
-        // 2. CARREGAR CANAIS AO VIVO
+        // 1. CARREGAR CANAIS
         const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
         if (Array.isArray(liveData)) {
             liveData.forEach(item => {
                 const grupo = catLiveMap[item.category_id] || "Canais de TV";
                 if (ehValido(item.name, grupo)) {
                     let tipo = "tv";
-                    if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
-                        tipo = "24h";
-                    }
+                    if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) tipo = "24h";
                     baseLista.push({
                         id_unico: `live_${item.stream_id}`,
                         nome: limparNome(item.name),
@@ -146,24 +128,19 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 3. CARREGAR FILMES (VOD)
+        // 2. CARREGAR FILMES
         const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
         if (Array.isArray(moviesData)) {
             moviesData.forEach(item => {
                 const grupo = catVodMap[item.category_id] || "Filmes";
                 if (ehValido(item.name, grupo)) {
                     let tipo = "filme";
-                    if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) {
-                        tipo = "anime";
-                    }
+                    if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
                     
-                    const nomeLimpo = limparNome(item.name);
-                    const capaProvisoria = item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao;
-
                     baseLista.push({
                         id_unico: `movie_${item.stream_id}`,
-                        nome: nomeLimpo,
-                        logo: capaProvisoria,
+                        nome: limparNome(item.name),
+                        logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                         group: grupo,
                         url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                         tipoOriginal: tipo
@@ -172,27 +149,19 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 4. CARREGAR SÉRIES E ANIMES
+        // 3. CARREGAR SÉRIES
         const seriesData = await fetchSeguro(`${baseUrl}&action=get_series`);
         if (Array.isArray(seriesData)) {
             seriesData.forEach(item => {
                 const grupo = catSeriesMap[item.category_id] || "Séries";
                 if (ehValido(item.name, grupo)) {
                     let tipo = "series";
-                    const gLow = grupo.toLowerCase();
-                    const nLow = item.name.toLowerCase();
+                    if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
                     
-                    if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime") || nLow.includes("legendado") || nLow.includes("dublado")) {
-                        tipo = "anime";
-                    }
-
-                    const nomeLimpo = limparNome(item.name);
-                    const capaProvisoria = item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao;
-
                     baseLista.push({
                         id_unico: `series_${item.series_id}`,
-                        nome: nomeLimpo,
-                        logo: capaProvisoria,
+                        nome: limparNome(item.name),
+                        logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                         group: grupo,
                         url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
                         tipoOriginal: tipo
@@ -201,7 +170,7 @@ async function carregarDadosXtream() {
             });
         }
         
-        if (TMDB_KEY) {
+        if (TMDB_KEY && baseLista.length > 0) {
             setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
         }
 
