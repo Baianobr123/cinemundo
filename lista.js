@@ -50,32 +50,22 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 
 // ==========================================
-// MOTOR DE REQUISIÇÃO ADAPTADO DE ALTA COMPATIBILIDADE
+// MOTOR DE REQUISIÇÃO WEB COMPATÍVEL (HTTPS)
 // ==========================================
 async function fetchSeguro(url) {
-    // Usamos um espelho CORS ultra-estável que não cai e que simula um App nativo
+    // Se estiver online no GitHub (HTTPS), usa um gateway de criptografia para não dar erro
     const urlFinal = window.location.protocol === "https:" 
-        ? `https://corsproxy.io/?${encodeURIComponent(url)}`
+        ? `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
         : url;
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de tolerância
-
-        const response = await fetch(urlFinal, {
-            signal: controller.signal,
-            headers: {
-                "X-Requested-With": "XMLHttpRequest"
-            }
-        });
-        
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-            return await response.json();
+        const res = await fetch(urlFinal);
+        if (res.ok) {
+            const dados = await res.json();
+            return dados.contents ? JSON.parse(dados.contents) : dados;
         }
     } catch (e) {
-        console.error("Painel IPTV demorou para responder ou bloqueou o navegador.");
+        console.error("Erro na requisição externa.");
     }
     return null;
 }
@@ -100,23 +90,19 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // Carrega categorias em paralelo para dar velocidade máxima
-        const [dadosCatLive, dadosCatVod, dadosCatSeries] = await Promise.all([
-            fetchSeguro(`${baseUrl}&action=get_live_categories`),
-            fetchSeguro(`${baseUrl}&action=get_vod_categories`),
-            fetchSeguro(`${baseUrl}&action=get_series_categories`)
-        ]);
-
+        const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
         const catLiveMap = {};
         if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
 
+        const dadosCatVod = await fetchSeguro(`${baseUrl}&action=get_vod_categories`);
         const catVodMap = {};
         if (Array.isArray(dadosCatVod)) dadosCatVod.forEach(c => { catVodMap[c.category_id] = c.category_name; });
 
+        const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
         const catSeriesMap = {};
         if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
-        // 1. CARREGAR CANAIS
+        // 1. CANAIS
         const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
         if (Array.isArray(liveData)) {
             liveData.forEach(item => {
@@ -136,7 +122,7 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 2. CARREGAR FILMES
+        // 2. FILMES
         const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
         if (Array.isArray(moviesData)) {
             moviesData.forEach(item => {
@@ -144,7 +130,6 @@ async function carregarDadosXtream() {
                 if (ehValido(item.name, grupo)) {
                     let tipo = "filme";
                     if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
-                    
                     baseLista.push({
                         id_unico: `movie_${item.stream_id}`,
                         nome: limparNome(item.name),
@@ -157,7 +142,7 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 3. CARREGAR SÉRIES
+        // 3. SÉRIES
         const seriesData = await fetchSeguro(`${baseUrl}&action=get_series`);
         if (Array.isArray(seriesData)) {
             seriesData.forEach(item => {
@@ -165,7 +150,6 @@ async function carregarDadosXtream() {
                 if (ehValido(item.name, grupo)) {
                     let tipo = "series";
                     if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
-                    
                     baseLista.push({
                         id_unico: `series_${item.series_id}`,
                         nome: limparNome(item.name),
@@ -177,7 +161,7 @@ async function carregarDadosXtream() {
                 }
             });
         }
-        
+
         if (TMDB_KEY && baseLista.length > 0) {
             setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
         }
@@ -190,7 +174,7 @@ async function carregarDadosXtream() {
 
 async function processarCapasEmSegundoPlano(lista) {
     const itensParaBuscar = lista.filter(item => item.tipoOriginal !== 'tv' && item.tipoOriginal !== '24h');
-    const tamanhoBloco = 5;
+    const tamanhoBloco = 3;
     for (let i = 0; i < itensParaBuscar.length; i += tamanhoBloco) {
         const bloco = itensParaBuscar.slice(i, i + tamanhoBloco);
         await Promise.all(bloco.map(async (item) => {
@@ -217,6 +201,6 @@ async function processarCapasEmSegundoPlano(lista) {
                 }
             } catch(e){}
         }));
-        await new Promise(r => setTimeout(r, 60));
+        await new Promise(r => setTimeout(r, 100));
     }
 }
