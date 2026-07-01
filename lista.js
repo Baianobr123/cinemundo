@@ -50,22 +50,24 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 
 // ==========================================
-// MOTOR DE REQUISIÇÃO WEB COMPATÍVEL (HTTPS)
+// MOTOR DE REQUISIÇÃO WEB COMPATÍVEL (IGNORA CORS)
 // ==========================================
 async function fetchSeguro(url) {
-    // Se estiver online no GitHub (HTTPS), usa um gateway de criptografia para não dar erro
-    const urlFinal = window.location.protocol === "https:" 
-        ? `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-        : url;
+    // Usamos o Corsproxy.io que quebra a trava de navegadores tanto local quanto web
+    const urlFinal = `https://corsproxy.io/?${encodeURIComponent(url)}`;
 
     try {
-        const res = await fetch(urlFinal);
-        if (res.ok) {
-            const dados = await res.json();
-            return dados.contents ? JSON.parse(dados.contents) : dados;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 segundos de tolerância máxima
+
+        const response = await fetch(urlFinal, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            return await response.json();
         }
     } catch (e) {
-        console.error("Erro na requisição externa.");
+        console.error("Erro ao conectar com o painel através do gateway.");
     }
     return null;
 }
@@ -90,19 +92,23 @@ async function carregarDadosXtream() {
     }
 
     try {
-        const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
+        // Carrega categorias em paralelo para máxima velocidade
+        const [dadosCatLive, dadosCatVod, dadosCatSeries] = await Promise.all([
+            fetchSeguro(`${baseUrl}&action=get_live_categories`),
+            fetchSeguro(`${baseUrl}&action=get_vod_categories`),
+            fetchSeguro(`${baseUrl}&action=get_series_categories`)
+        ]);
+
         const catLiveMap = {};
         if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
 
-        const dadosCatVod = await fetchSeguro(`${baseUrl}&action=get_vod_categories`);
         const catVodMap = {};
         if (Array.isArray(dadosCatVod)) dadosCatVod.forEach(c => { catVodMap[c.category_id] = c.category_name; });
 
-        const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
         const catSeriesMap = {};
         if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
-        // 1. CANAIS
+        // 1. CARREGAR CANAIS
         const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
         if (Array.isArray(liveData)) {
             liveData.forEach(item => {
@@ -122,7 +128,7 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 2. FILMES
+        // 2. CARREGAR FILMES
         const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
         if (Array.isArray(moviesData)) {
             moviesData.forEach(item => {
