@@ -50,27 +50,32 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 
 // ==========================================
-// MOTOR DE REQUISIÇÃO DIRETA COM TIMEOUT RÁPIDO
+// MOTOR DE REQUISIÇÃO ADAPTADO DE ALTA COMPATIBILIDADE
 // ==========================================
 async function fetchSeguro(url) {
-    // Proxy ultrarápido que funciona como fallback apenas em HTTPS
-    const UrlFinal = window.location.protocol === "https:" 
-        ? `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    // Usamos um espelho CORS ultra-estável que não cai e que simula um App nativo
+    const urlFinal = window.location.protocol === "https:" 
+        ? `https://corsproxy.io/?${encodeURIComponent(url)}`
         : url;
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 segundos máximos para não travar
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de tolerância
 
-        const response = await fetch(UrlFinal, { signal: controller.signal });
+        const response = await fetch(urlFinal, {
+            signal: controller.signal,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
+        
         clearTimeout(timeoutId);
 
         if (response.ok) {
-            const dados = await response.json();
-            return dados.contents ? JSON.parse(dados.contents) : dados;
+            return await response.json();
         }
     } catch (e) {
-        console.error("Conexão recusada ou lenta no painel do servidor.");
+        console.error("Painel IPTV demorou para responder ou bloqueou o navegador.");
     }
     return null;
 }
@@ -95,17 +100,20 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // Busca Categorias de forma assíncrona tolerante a falhas
+        // Carrega categorias em paralelo para dar velocidade máxima
+        const [dadosCatLive, dadosCatVod, dadosCatSeries] = await Promise.all([
+            fetchSeguro(`${baseUrl}&action=get_live_categories`),
+            fetchSeguro(`${baseUrl}&action=get_vod_categories`),
+            fetchSeguro(`${baseUrl}&action=get_series_categories`)
+        ]);
+
         const catLiveMap = {};
-        const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
         if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
 
         const catVodMap = {};
-        const dadosCatVod = await fetchSeguro(`${baseUrl}&action=get_vod_categories`);
         if (Array.isArray(dadosCatVod)) dadosCatVod.forEach(c => { catVodMap[c.category_id] = c.category_name; });
 
         const catSeriesMap = {};
-        const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
         if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
         // 1. CARREGAR CANAIS
@@ -175,7 +183,7 @@ async function carregarDadosXtream() {
         }
 
     } catch (e) {
-        console.error("Erro geral na sincronização:", e);
+        console.error("Erro na sincronização:", e);
     }
     return baseLista;
 }
