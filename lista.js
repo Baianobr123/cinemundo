@@ -50,18 +50,15 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 
 // ==========================================
-// MOTOR DE REQUISIÇÃO TOLERANTE A FALHAS SECO
+// MOTOR DE REQUISIÇÃO COMPATÍVEL WEB E LOCAL
 // ==========================================
 async function fetchSeguro(url) {
-    // Se estiver no GitHub (https), limpa o "http://" para o corsproxy trabalhar leve
-    const urlFormatada = url.replace("http://", "").replace("https://", "");
-    const urlFinal = window.location.protocol === "https:" 
-        ? `https://corsproxy.io/?http://${urlFormatada}`
-        : url;
+    // Usamos o Corsproxy para burlar o CORS nativo tanto em Ficheiro Local quanto no GitHub Pages
+    const urlFinal = `https://corsproxy.io/?${encodeURIComponent(url)}`;
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos para listas gigantes
+        const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 segundos de tempo limite
 
         const response = await fetch(urlFinal, { signal: controller.signal });
         clearTimeout(timeoutId);
@@ -70,7 +67,7 @@ async function fetchSeguro(url) {
             return await response.json();
         }
     } catch (e) {
-        console.warn("Falha leve ou timeout ao carregar parte da lista.");
+        console.warn("Falha de comunicação ou timeout no endpoint.");
     }
     return null;
 }
@@ -94,104 +91,84 @@ async function carregarDadosXtream() {
         return nomeOriginal.replace(/\.[^/.]+$/, "").replace(/_/g, " ").replace(/-/g, " ").trim();
     }
 
-    // MAPAS DE CATEGORIAS LOCAIS
     const catLiveMap = {};
     const catVodMap = {};
     const catSeriesMap = {};
 
     try {
-        // CARREGAMENTO SEQUENCIAL (Se um falhar, o resto não morre!)
-        
-        // Categorias Ao Vivo
-        try {
-            const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
-            if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
-        } catch(e){}
+        // CARREGAMENTO SEPARADO SEQUENCIAL PARA PREVENIR TRAVAMENTO DE MEMÓRIA
+        const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
+        if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
 
-        // Canais Ao Vivo (Geralmente leve, carrega primeiro)
-        try {
-            const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
-            if (Array.isArray(liveData)) {
-                liveData.forEach(item => {
-                    const grupo = catLiveMap[item.category_id] || "Canais de TV";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "tv";
-                        if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) tipo = "24h";
-                        baseLista.push({
-                            id_unico: `live_${item.stream_id}`,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
-                            group: grupo,
-                            url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            tipoOriginal: tipo
-                        });
-                    }
-                });
-            }
-        } catch(e){}
+        const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
+        if (Array.isArray(liveData)) {
+            liveData.forEach(item => {
+                const grupo = catLiveMap[item.category_id] || "Canais de TV";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "tv";
+                    if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) tipo = "24h";
+                    baseLista.push({
+                        id_unico: `live_${item.stream_id}`,
+                        nome: limparNome(item.name),
+                        logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                        group: grupo,
+                        url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
+                        tipoOriginal: tipo
+                    });
+                }
+            });
+        }
 
-        // Categorias Filmes
-        try {
-            const dadosCatVod = await fetchSeguro(`${baseUrl}&action=get_vod_categories`);
-            if (Array.isArray(dadosCatVod)) dadosCatVod.forEach(c => { catVodMap[c.category_id] = c.category_name; });
-        } catch(e){}
+        const dadosCatVod = await fetchSeguro(`${baseUrl}&action=get_vod_categories`);
+        if (Array.isArray(dadosCatVod)) dadosCatVod.forEach(c => { catVodMap[c.category_id] = c.category_name; });
 
-        // Filmes (VOD)
-        try {
-            const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
-            if (Array.isArray(moviesData)) {
-                moviesData.forEach(item => {
-                    const grupo = catVodMap[item.category_id] || "Filmes";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "filme";
-                        if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
-                        baseLista.push({
-                            id_unico: `movie_${item.stream_id}`,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
-                            group: grupo,
-                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
-                            tipoOriginal: tipo
-                        });
-                    }
-                });
-            }
-        } catch(e){}
+        const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
+        if (Array.isArray(moviesData)) {
+            moviesData.forEach(item => {
+                const grupo = catVodMap[item.category_id] || "Filmes";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "filme";
+                    if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
+                    baseLista.push({
+                        id_unico: `movie_${item.stream_id}`,
+                        nome: limparNome(item.name),
+                        logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                        group: grupo,
+                        url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
+                        tipoOriginal: tipo
+                    });
+                }
+            });
+        }
 
-        // Categorias Séries
-        try {
-            const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
-            if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
-        } catch(e){}
+        const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
+        if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
-        // Séries
-        try {
-            const seriesData = await fetchSeguro(`${baseUrl}&action=get_series`);
-            if (Array.isArray(seriesData)) {
-                seriesData.forEach(item => {
-                    const grupo = catSeriesMap[item.category_id] || "Séries";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "series";
-                        if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
-                        baseLista.push({
-                            id_unico: `series_${item.series_id}`,
-                            nome: limparNome(item.name),
-                            logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
-                            group: grupo,
-                            url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            tipoOriginal: tipo
-                        });
-                    }
-                });
-            }
-        } catch(e){}
+        const seriesData = await fetchSeguro(`${baseUrl}&action=get_series`);
+        if (Array.isArray(seriesData)) {
+            seriesData.forEach(item => {
+                const grupo = catSeriesMap[item.category_id] || "Séries";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "series";
+                    if (grupo.toLowerCase().includes("anime") || item.name.toLowerCase().includes("anime")) tipo = "anime";
+                    baseLista.push({
+                        id_unico: `series_${item.series_id}`,
+                        nome: limparNome(item.name),
+                        logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
+                        group: grupo,
+                        url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
+                        tipoOriginal: tipo
+                    });
+                }
+            });
+        }
 
         if (TMDB_KEY && baseLista.length > 0) {
             setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
         }
 
     } catch (e) {
-        console.error("Erro crítico na sincronização:", e);
+        console.error("Erro geral no sincronismo do script:", e);
     }
     return baseLista;
 }
@@ -225,6 +202,6 @@ async function processarCapasEmSegundoPlano(lista) {
                 }
             } catch(e){}
         }));
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 120));
     }
 }
