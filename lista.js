@@ -53,27 +53,41 @@ const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
 // MOTOR DE BUSCA E INTEGRAÇÃO DE CATEGORIAS
 // ==========================================
 async function fetchSeguro(url) {
-    // Se estiver rodando no GitHub Pages (HTTPS), encapsula no Proxy de forma robusta
+    // Se estiver rodando no GitHub Pages (HTTPS)
     if (window.location.protocol === "https:") {
-        try {
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-            const response = await fetch(proxyUrl);
-            if (response.ok) {
-                const json = await response.json();
-                return JSON.parse(json.contents); // AllOrigins joga a resposta real dentro de .contents
+        // Lista de proxies de backup rápidos caso o principal falhe
+        const proxies = [
+            (u) => `https://cors-anywhere.herokuapp.com/${u}`,
+            (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`
+        ];
+
+        for (let proxy do proxies) {
+            try {
+                const urlProxied = proxy(url);
+                // Define um tempo limite de 4 segundos para não travar o app
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+                const response = await fetch(urlProxied, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const dados = await response.json();
+                    // Se for o AllOrigins, o json real vem dentro de .contents, se for o cors-anywhere vem direto
+                    return dados.contents ? JSON.parse(dados.contents) : dados;
+                }
+            } catch (e) {
+                console.warn("Tentando próximo proxy devido a erro:", e.message);
             }
-        } catch (e) {
-            console.error("Erro no proxy:", e);
-        }
-    } else {
-        // Se estiver rodando local (Ficheiro E:/), faz a requisição direta padrão
-        try {
-            const response = await fetch(url);
-            if (response.ok) return await response.json();
-        } catch (e) {
-            console.error("Erro direto:", e);
         }
     }
+
+    // Fallback: Tentativa direta (essencial se rodar local ou se o servidor IPTV aceitar CORS)
+    try {
+        const response = await fetch(url);
+        if (response.ok) return await response.json();
+    } catch (e) {}
+    
     return null;
 }
 
@@ -97,7 +111,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // Chamadas usando nossa função inteligente de Fetch com Proxy Integrado
+        // 1. CARREGAR CATEGORIAS
         const catLiveMap = {};
         const dadosCatLive = await fetchSeguro(`${baseUrl}&action=get_live_categories`);
         if (Array.isArray(dadosCatLive)) dadosCatLive.forEach(c => { catLiveMap[c.category_id] = c.category_name; });
@@ -110,7 +124,7 @@ async function carregarDadosXtream() {
         const dadosCatSeries = await fetchSeguro(`${baseUrl}&action=get_series_categories`);
         if (Array.isArray(dadosCatSeries)) dadosCatSeries.forEach(c => { catSeriesMap[c.category_id] = c.category_name; });
 
-        // 1. CARREGAR CANAIS AO VIVO
+        // 2. CARREGAR CANAIS AO VIVO
         const liveData = await fetchSeguro(`${baseUrl}&action=get_live_streams`);
         if (Array.isArray(liveData)) {
             liveData.forEach(item => {
@@ -121,6 +135,7 @@ async function carregarDadosXtream() {
                         tipo = "24h";
                     }
                     baseLista.push({
+                        id_unico: `live_${item.stream_id}`,
                         nome: limparNome(item.name),
                         logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                         group: grupo,
@@ -131,7 +146,7 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 2. CARREGAR FILMES (VOD)
+        // 3. CARREGAR FILMES (VOD)
         const moviesData = await fetchSeguro(`${baseUrl}&action=get_vod_streams`);
         if (Array.isArray(moviesData)) {
             moviesData.forEach(item => {
@@ -157,7 +172,7 @@ async function carregarDadosXtream() {
             });
         }
 
-        // 3. CARREGAR SÉRIES E ANIMES
+        // 4. CARREGAR SÉRIES E ANIMES
         const seriesData = await fetchSeguro(`${baseUrl}&action=get_series`);
         if (Array.isArray(seriesData)) {
             seriesData.forEach(item => {
@@ -186,7 +201,9 @@ async function carregarDadosXtream() {
             });
         }
         
-        setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
+        if (TMDB_KEY) {
+            setTimeout(() => processarCapasEmSegundoPlano(baseLista), 50);
+        }
 
     } catch (e) {
         console.error("Erro geral na sincronização:", e);
