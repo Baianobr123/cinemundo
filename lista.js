@@ -1,5 +1,5 @@
 // ==========================================
-// CONFIGURAÇÃO DOS SERVIDORES
+// 1. CONFIGURAÇÃO DOS SERVIDORES (XTREAM)
 // ==========================================
 const XTREAM_SERVIDORES = {
     servidor1: {
@@ -24,34 +24,13 @@ const XTREAM_SERVIDORES = {
 };
 
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
+let dadosGlobais = [];
 
-// Chave do TMDB
+// Chave Pública do TMDB
 const TMDB_API_KEY = "15d2fb6fe615161b361a1200155b410f";
 
-async function buscarInfoTMDB(nome, tipo = "movie") {
-    try {
-        const nomeLimpo = encodeURIComponent(nome.replace(/\b(4k|1080p|720p|dublado|legendado|hd)\b/gi, "").trim());
-        const url = `https://api.themoviedb.org/3/search/${tipo}?api_key=${TMDB_API_KEY}&query=${nomeLimpo}&language=pt-BR`;
-        const res = await fetch(url);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.results && data.results.length > 0) {
-                const item = data.results[0];
-                return {
-                    sinopse: item.overview || "Sem sinopse disponível.",
-                    capa: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
-                    backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : null
-                };
-            }
-        }
-    } catch (e) {
-        console.error("Erro TMDB:", e);
-    }
-    return null;
-}
-
 // ==========================================
-// MOTOR DE BUSCA E INTEGRAÇÃO
+// 2. BUSCAR DADOS DO SERVIDOR (API)
 // ==========================================
 async function carregarDadosXtream() {
     const server = XTREAM_CONFIG.server;
@@ -77,7 +56,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CANAIS
+        // 1. CARREGAR CANAIS AO VIVO
         const catLiveMap = {};
         const resCatLive = await fetch(`${baseUrl}&action=get_live_categories`);
         if (resCatLive.ok) {
@@ -103,7 +82,6 @@ async function carregarDadosXtream() {
                             logo: item.stream_icon && item.stream_icon.startsWith("http") ? item.stream_icon : capaPadrao,
                             group: grupo,
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            raw_url: `${rawServer}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
@@ -133,7 +111,6 @@ async function carregarDadosXtream() {
                             logo: item.stream_icon && item.stream_icon.startsWith("http") ? item.stream_icon : capaPadrao,
                             group: grupo,
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
-                            raw_url: `${rawServer}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                             tipoOriginal: "filme"
                         });
                     }
@@ -170,7 +147,6 @@ async function carregarDadosXtream() {
                             logo: item.cover && item.cover.startsWith("http") ? item.cover : capaPadrao,
                             group: grupo,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            raw_url: `${rawServer}/series/${username}/${password}/${item.series_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
@@ -178,7 +154,98 @@ async function carregarDadosXtream() {
             }
         }
     } catch (e) {
-        console.error("Erro ao carregar lista:", e);
+        console.error("Erro ao carregar dados:", e);
     }
+
+    dadosGlobais = baseLista;
+    renderizarTela(); // Desenha na tela assim que carregar
     return baseLista;
 }
+
+// ==========================================
+// 3. DESENHAR CARDS NA TELA E PLAYER
+// ==========================================
+function renderizarTela() {
+    // Procura a div onde o conteúdo deve ser desenhado
+    let container = document.getElementById("conteudo-principal") || document.querySelector("main") || document.body;
+
+    if (dadosGlobais.length === 0) {
+        return;
+    }
+
+    // Agrupa por categoria
+    const grupos = {};
+    dadosGlobais.forEach(item => {
+        const g = item.group || "Geral";
+        if (!grupos[g]) grupos[g] = [];
+        grupos[g].push(item);
+    });
+
+    let html = '<div style="padding: 20px;">';
+
+    Object.keys(grupos).forEach(grupoNome => {
+        html += `
+            <div style="margin-bottom: 30px;">
+                <h2 style="color: #e50914; font-family: sans-serif; border-left: 4px solid #e50914; padding-left: 10px; margin-bottom: 15px;">${grupoNome}</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+        `;
+
+        grupos[grupoNome].slice(0, 30).forEach(item => {
+            const logoUrl = item.logo || "https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg";
+            html += `
+                <div onclick="tocarMidia('${item.url}', '${item.nome}')" style="cursor: pointer; width: 130px; text-align: center; background: #181818; padding: 8px; border-radius: 8px;">
+                    <img src="${logoUrl}" alt="${item.nome}" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg'" style="width: 100%; height: 180px; object-fit: cover; border-radius: 6px;">
+                    <p style="color: #fff; font-size: 12px; margin-top: 8px; font-family: sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nome}</p>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    
+    // Cria div do Player Modal caso não exista
+    if (!document.getElementById("modal-player-container")) {
+        const modal = document.createElement("div");
+        modal.id = "modal-player-container";
+        modal.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:99999; align-items:center; justify-content:center;";
+        document.body.appendChild(modal);
+    }
+
+    container.innerHTML = html;
+}
+
+// Player de vídeo
+window.tocarMidia = function(url, nome) {
+    const modal = document.getElementById("modal-player-container");
+    if (!modal) return;
+
+    modal.innerHTML = `
+        <div style="position: relative; width: 90%; max-width: 800px; background: #000; padding: 20px; border-radius: 10px; border: 1px solid #333;">
+            <button onclick="fecharPlayer()" style="position: absolute; top: 10px; right: 10px; background: #e50914; color: #fff; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">X Fechar</button>
+            <h3 style="color: #fff; font-family: sans-serif; margin-bottom: 15px; font-size: 16px;">${nome}</h3>
+            <video controls autoplay style="width: 100%; max-height: 450px; background: #000;">
+                <source src="${url}" type="application/x-mpegURL">
+                Seu navegador não suporta a reprodução deste vídeo.
+            </video>
+        </div>
+    `;
+    modal.style.display = "flex";
+};
+
+window.fecharPlayer = function() {
+    const modal = document.getElementById("modal-player-container");
+    if (modal) {
+        modal.style.display = "none";
+        modal.innerHTML = "";
+    }
+};
+
+// Executa automaticamente ao carregar o site
+document.addEventListener("DOMContentLoaded", () => {
+    carregarDadosXtream();
+});
