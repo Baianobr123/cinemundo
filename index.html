@@ -255,7 +255,6 @@
         let indiceEpisodioAtual = -1;
 
         const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
-        const PROXY_URL = "https://corsproxy.io/?";
 
         function obterHistorico() {
             try { return JSON.parse(localStorage.getItem('bhs_historico_vistos')) || []; }
@@ -308,7 +307,7 @@
                 if (todosItens.length === 0) {
                     msgElement.innerText = "Este servidor está demorando muito para responder. Escolha outra opção no topo!";
                 }
-            }, 8000);
+            }, 10000);
 
             try {
                 todosItens = await carregarDadosXtream();
@@ -475,7 +474,7 @@
                     }
                 }
             } catch (e) {
-                document.getElementById('modalOverview').innerText = "Falha ao se conectar ao banco de dados do TMDB.";
+                document.getElementById('modalOverview').innerText = "Falha ao conectar com TMDB.";
             }
         }
 
@@ -611,7 +610,7 @@
                 console.error("Erro ao carregar episódios:", err);
             }
             
-            container.innerHTML = '<div style="padding:15px;color:var(--accent-red);">Nenhum episódio localizado ou servidor indisponível.</div>';
+            container.innerHTML = '<div style="padding:15px;color:var(--accent-red);">Nenhum episódio localizado.</div>';
         }
 
         function executarEpisodioPorIndice(index) {
@@ -687,7 +686,7 @@
                 } else {
                     video.src = targetUrl;
                     video.play().catch((err) => {
-                        console.error("Erro ao reproduzir arquivo direto:", err);
+                        console.error("Erro na reprodução direta:", err);
                     });
                 }
             }
