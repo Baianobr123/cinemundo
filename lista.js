@@ -94,15 +94,27 @@ async function carregarDadosXtream() {
                         if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
                             tipo = "24h";
                         }
+                        const img = item.stream_icon ? item.stream_icon : capaPadrao;
+                        const nomeTratado = limparNome(item.name);
+                        
                         baseLista.push({
                             id_global: `tv_${item.stream_id || index}`,
                             stream_id: item.stream_id,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon ? item.stream_icon : capaPadrao,
+                            nome: nomeTratado,
+                            name: nomeTratado,
+                            title: nomeTratado,
+                            logo: img,
+                            stream_icon: img,
+                            icon: img,
+                            cover: img,
+                            poster: img,
                             group: grupo,
                             categoria: grupo,
+                            category_id: item.category_id,
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            tipoOriginal: tipo
+                            stream_url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
+                            tipoOriginal: tipo,
+                            type: tipo
                         });
                     }
                 });
@@ -124,15 +136,28 @@ async function carregarDadosXtream() {
                 moviesData.forEach((item, index) => {
                     const grupo = catMoviesMap[item.category_id] || "Filmes";
                     if (ehValido(item.name, grupo)) {
+                        const img = item.stream_icon ? item.stream_icon : capaPadrao;
+                        const nomeTratado = limparNome(item.name);
+                        const ext = item.container_extension || 'mp4';
+
                         baseLista.push({
                             id_global: `movie_${item.stream_id || index}`,
                             stream_id: item.stream_id,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon ? item.stream_icon : capaPadrao,
+                            nome: nomeTratado,
+                            name: nomeTratado,
+                            title: nomeTratado,
+                            logo: img,
+                            stream_icon: img,
+                            icon: img,
+                            cover: img,
+                            poster: img,
                             group: grupo,
                             categoria: grupo,
-                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
-                            tipoOriginal: "filme"
+                            category_id: item.category_id,
+                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
+                            stream_url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
+                            tipoOriginal: "filme",
+                            type: "filme"
                         });
                     }
                 });
@@ -161,15 +186,28 @@ async function carregarDadosXtream() {
                         if (gLow.includes("anime") || gLow.includes("crunchyroll") || nLow.includes("anime")) {
                             tipo = "anime";
                         }
+
+                        const img = item.cover ? item.cover : capaPadrao;
+                        const nomeTratado = limparNome(item.name);
+
                         baseLista.push({
                             id_global: `series_${item.series_id || index}`,
                             series_id: item.series_id,
-                            nome: limparNome(item.name),
-                            logo: item.cover ? item.cover : capaPadrao,
+                            nome: nomeTratado,
+                            name: nomeTratado,
+                            title: nomeTratado,
+                            logo: img,
+                            stream_icon: img,
+                            icon: img,
+                            cover: img,
+                            poster: img,
                             group: grupo,
                             categoria: grupo,
+                            category_id: item.category_id,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            tipoOriginal: tipo
+                            stream_url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
+                            tipoOriginal: tipo,
+                            type: tipo
                         });
                     }
                 });
