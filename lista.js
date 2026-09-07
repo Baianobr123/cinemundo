@@ -39,8 +39,9 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
 const PROXY_CORS = "https://corsproxy.io/?";
 
-// Função auxiliar para injetar o proxy caso o site esteja em HTTPS (Vercel)
+// Função para contornar Mixed Content (HTTP em páginas HTTPS)
 function criarUrlProxy(url) {
+    if (!url) return url;
     if (window.location.protocol === 'https:' && url.startsWith('http:')) {
         return PROXY_CORS + encodeURIComponent(url);
     }
@@ -157,7 +158,7 @@ async function carregarDadosXtream() {
                         }
                         baseLista.push({
                             id_global: `series_${item.series_id || index}`,
-                            series_id: item.series_id, // Guarda o ID real da série
+                            series_id: item.series_id,
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
