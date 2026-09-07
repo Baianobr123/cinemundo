@@ -202,8 +202,8 @@
             <div id="sub-nav-back" style="display:none;">
                 <button class="back-btn" onclick="renderizerCategorias()">← Voltar para Categorias</button>
             </div>
-            <h2 class="section-title" id="titulo-pagina">Categorias Disponíveis</h2>
-            <div id="loading-msg" class="loading">Sincronizando canais e servidores...</div>
+            <h2 class="section-title" id="titulo-pagina">Categorias do Servidor</h2>
+            <div id="loading-msg" class="loading">Sincronizando canais e servidores via ponte...</div>
             <div class="content-grid" id="main-grid"></div>
         </div>
 
@@ -303,15 +303,8 @@
             const msgElement = document.getElementById('loading-msg');
             msgElement.style.display = 'block';
             
-            const timeoutSeguranca = setTimeout(() => {
-                if (todosItens.length === 0) {
-                    msgElement.innerText = "Este servidor está demorando muito para responder. Escolha outra opção no topo!";
-                }
-            }, 10000);
-
             try {
                 todosItens = await carregarDadosXtream();
-                clearTimeout(timeoutSeguranca);
                 msgElement.style.display = 'none';
                 
                 mapaItens = {};
@@ -326,8 +319,7 @@
                 });
                 renderizerCategorias();
             } catch (err) {
-                clearTimeout(timeoutSeguranca);
-                msgElement.innerText = "Erro ao carregar este servidor. Tente mudar de servidor acima.";
+                msgElement.innerText = "Erro ao carregar os dados. Verifique a conexão.";
             }
             document.getElementById('search').oninput = realizarBusca;
         }
@@ -379,7 +371,7 @@
                 
                 card.innerHTML = `
                     <div class="content-card-img" onclick="processarCliqueConteudoById('${item.id_global}')">
-                        <img src="${criarUrlProxy(item.logo)}" loading="lazy" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg'">
+                        <img src="${aplicarPonteCORS(item.logo)}" loading="lazy" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg'">
                     </div>
                     <div class="content-card-info">
                         <div class="content-card-title" onclick="processarCliqueConteudoById('${item.id_global}')">${item.nome}</div>
@@ -426,7 +418,7 @@
                 card.classList.add('content-card');
                 card.innerHTML = `
                     <div class="content-card-img" onclick="processarCliqueConteudoById('${item.id_global}')">
-                        <img src="${criarUrlProxy(item.logo)}" loading="lazy" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg'">
+                        <img src="${aplicarPonteCORS(item.logo)}" loading="lazy" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg'">
                     </div>
                     <div class="content-card-info">
                         <div class="content-card-title" onclick="processarCliqueConteudoById('${item.id_global}')">${item.nome}</div>
@@ -445,19 +437,19 @@
         async function abrirPopupInformacao(nomeOriginal, tipo, logoPadrao) {
             const overlay = document.getElementById('infoModal');
             document.getElementById('modalTitle').innerText = nomeOriginal;
-            document.getElementById('modalImg').src = criarUrlProxy(logoPadrao);
+            document.getElementById('modalImg').src = aplicarPonteCORS(logoPadrao);
             document.getElementById('modalYear').innerText = "----";
             document.getElementById('modalRating').innerText = "⭐ --";
-            document.getElementById('modalOverview').innerText = "Buscando informações oficiais...";
+            document.getElementById('modalOverview').innerText = "Buscando informações...";
             overlay.style.display = 'flex';
 
             if (tipo === 'tv' || tipo === '24h') {
-                document.getElementById('modalOverview').innerText = `Canal ao vivo: "${nomeOriginal}". Transmissão contínua em tempo real.`;
+                document.getElementById('modalOverview').innerText = `Canal ao vivo: "${nomeOriginal}".`;
                 return;
             }
 
             try {
-                let termoBusca = nomeOriginal.replace(/\b(dublado|legendado|multi|4k|fhd|hd|720p|1080p|h264|x264|temporada|episodio|202[0-9]|201[0-9])\b/gi, "").trim();
+                let termoBusca = nomeOriginal.replace(/\b(dublado|legendado|multi|4k|fhd|hd|720p|1080p|h264|x264|temporada|episodio)\b/gi, "").trim();
                 const tipoEndpoint = (tipo === 'series' || tipo === 'anime') ? 'tv' : 'movie';
                 
                 const res = await fetch(`https://api.themoviedb.org/3/search/${tipoEndpoint}?api_key=${TMDB_KEY}&query=${encodeURIComponent(termoBusca)}&language=pt-BR`);
@@ -467,15 +459,11 @@
                         const info = dados.results[0];
                         document.getElementById('modalYear').innerText = (info.release_date || info.first_air_date || "----").split("-")[0];
                         document.getElementById('modalRating').innerText = `⭐ ${info.vote_average ? info.vote_average.toFixed(1) : "--"}`;
-                        document.getElementById('modalOverview').innerText = info.overview || "Sinopse indisponível em português.";
+                        document.getElementById('modalOverview').innerText = info.overview || "Sinopse indisponível.";
                         if (info.poster_path) document.getElementById('modalImg').src = `https://image.tmdb.org/t/p/w300${info.poster_path}`;
-                    } else {
-                        document.getElementById('modalOverview').innerText = "Sinopse não localizada no catálogo TMDB.";
                     }
                 }
-            } catch (e) {
-                document.getElementById('modalOverview').innerText = "Falha ao conectar com TMDB.";
-            }
+            } catch (e) {}
         }
 
         function fecharModalInfo(e) {
@@ -508,10 +496,7 @@
 
             const el = document.createElement('div');
             el.classList.add('stream-item', 'active');
-            el.innerHTML = `
-                <div class="stream-item-text">Reproduzir Sinal Digital</div>
-                <button class="info-badge-btn" onclick="abrirPopupInformacaoPorId('${item.id_global}')">i</button>
-            `;
+            el.innerHTML = `<div class="stream-item-text">Reproduzir Sinal</div>`;
             container.appendChild(el);
             darPlay(item.url, item.nome, item.tipoOriginal);
         }
@@ -522,21 +507,14 @@
             document.getElementById('player-title').innerText = item.nome;
 
             const container = document.getElementById('sidebar-container');
-            container.innerHTML = '<div style="padding:15px;color:var(--text-muted);">Processando episódios...</div>';
+            container.innerHTML = '<div style="padding:15px;color:var(--text-muted);">Processando...</div>';
 
             try {
                 const { server, username, password } = XTREAM_CONFIG;
-                
-                let seriesId = item.series_id;
-                if (!seriesId) {
-                    const partes = item.url.split('/');
-                    seriesId = partes.pop().split('.')[0];
-                }
+                let seriesId = item.series_id || item.url.split('/').pop().split('.')[0];
                 
                 const rawUrl = `${server}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
-                const apiUrl = criarUrlProxy(rawUrl);
-
-                const res = await fetch(apiUrl);
+                const res = await fetch(aplicarPonteCORS(rawUrl));
                 
                 if (res.ok) {
                     const dados = await res.json();
@@ -545,7 +523,6 @@
                     if (dados && dados.episodes) {
                         let contadorIndex = 0;
                         let historicoVistos = obterHistorico();
-
                         const temporadasChaves = Object.keys(dados.episodes);
 
                         if (temporadasChaves.length > 0) {
@@ -554,7 +531,7 @@
                                 if (Array.isArray(listaEps)) {
                                     listaEps.forEach(ep => {
                                         const epId = ep.id || ep.stream_id || ep.episode_num;
-                                        const epExt = ep.container_extension || ep.direct_source || 'mp4';
+                                        const epExt = ep.container_extension || 'mp4';
                                         
                                         const epUrl = `${server}/series/${username}/${password}/${epId}.${epExt}`;
                                         const epNome = `T${tempNum} - Ep. ${ep.episode_num || (contadorIndex + 1)}: ${ep.title || 'Episódio'}`;
@@ -570,29 +547,17 @@
 
                                         const el = document.createElement('div');
                                         el.classList.add('stream-item');
-                                        if (historicoVistos.includes(uniqueEpId)) {
-                                            el.classList.add('watched');
-                                        }
+                                        if (historicoVistos.includes(uniqueEpId)) el.classList.add('watched');
                                         el.setAttribute('data-index', contadorIndex);
-                                        el.setAttribute('id', `dom-${uniqueEpId}`);
                                         el.innerHTML = `
                                             <div class="stream-item-text">
                                                 <span class="watched-eye">👁️</span>
                                                 <span>${epNome}</span>
                                             </div>
-                                            <div class="stream-actions">
-                                                <button class="info-badge-btn" style="background:var(--accent-red);font-size:0.65rem;width:auto;border-radius:6px;padding:2px 8px;">PLAY</button>
-                                            </div>
                                         `;
                                         
                                         const currentIndexSalvo = contadorIndex;
-                                        const acaoPlay = () => {
-                                            executarEpisodioPorIndice(currentIndexSalvo);
-                                        };
-
-                                        el.querySelector('.stream-item-text').onclick = acaoPlay;
-                                        el.querySelector('button').onclick = acaoPlay;
-
+                                        el.onclick = () => executarEpisodioPorIndice(currentIndexSalvo);
                                         container.appendChild(el);
                                         contadorIndex++;
                                     });
@@ -606,9 +571,7 @@
                         }
                     }
                 }
-            } catch (err) {
-                console.error("Erro ao carregar episódios:", err);
-            }
+            } catch (err) {}
             
             container.innerHTML = '<div style="padding:15px;color:var(--accent-red);">Nenhum episódio localizado.</div>';
         }
@@ -624,7 +587,6 @@
             document.querySelectorAll('.stream-item').forEach(x => {
                 if(parseInt(x.getAttribute('data-index')) === index) {
                     x.classList.add('active', 'watched');
-                    x.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
                     x.classList.remove('active');
                 }
@@ -654,17 +616,11 @@
             video.removeAttribute('src');
             video.load();
 
-            let targetUrl = criarUrlProxy(url);
+            let targetUrl = aplicarPonteCORS(url);
 
-            if (tipo === 'tv' || tipo === '24h') {
+            if (tipo === 'tv' || tipo === '24h' || targetUrl.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    hlsInstance = new Hls({
-                        enableWorker: true,
-                        lowLatencyMode: true,
-                        backBufferLength: 0,
-                        maxBufferLength: 8,
-                        maxMaxBufferLength: 15
-                    });
+                    hlsInstance = new Hls({ enableWorker: true });
                     hlsInstance.loadSource(targetUrl);
                     hlsInstance.attachMedia(video);
                     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
@@ -673,22 +629,8 @@
                     video.play().catch(() => {});
                 }
             } else {
-                if (targetUrl.includes('.m3u8')) {
-                    if (Hls.isSupported()) {
-                        hlsInstance = new Hls();
-                        hlsInstance.loadSource(targetUrl);
-                        hlsInstance.attachMedia(video);
-                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        video.src = targetUrl;
-                        video.play().catch(() => {});
-                    }
-                } else {
-                    video.src = targetUrl;
-                    video.play().catch((err) => {
-                        console.error("Erro na reprodução direta:", err);
-                    });
-                }
+                video.src = targetUrl;
+                video.play().catch(() => {});
             }
         }
 
