@@ -23,8 +23,6 @@ const XTREAM_SERVIDORES = {
 };
 
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
-
-// TMDB Integração
 const TMDB_API_KEY = "15d2fb6fe615161b361a1200155b410f";
 
 async function buscarInfoTMDB(nome, tipo = "movie") {
@@ -44,7 +42,7 @@ async function buscarInfoTMDB(nome, tipo = "movie") {
             }
         }
     } catch (e) {
-        console.error("Erro no TMDB:", e);
+        console.error("Erro TMDB:", e);
     }
     return null;
 }
@@ -90,14 +88,15 @@ async function carregarDadosXtream() {
                 liveData.forEach((item, index) => {
                     const grupo = catLiveMap[item.category_id] || "TV ao Vivo";
                     if (ehValido(item.name, grupo)) {
-                        let tipo = "tv";
+                        let tipoGeral = "tv";
                         if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
-                            tipo = "24h";
+                            tipoGeral = "24h";
                         }
                         const img = item.stream_icon ? item.stream_icon : capaPadrao;
                         const nomeTratado = limparNome(item.name);
                         
                         baseLista.push({
+                            id: item.stream_id || index,
                             id_global: `tv_${item.stream_id || index}`,
                             stream_id: item.stream_id,
                             nome: nomeTratado,
@@ -110,11 +109,13 @@ async function carregarDadosXtream() {
                             poster: img,
                             group: grupo,
                             categoria: grupo,
+                            category_name: grupo,
                             category_id: item.category_id,
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             stream_url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            tipoOriginal: tipo,
-                            type: tipo
+                            tipoOriginal: grupo, // Permite filtrar pelo nome exato da categoria
+                            tipoGeral: tipoGeral,
+                            type: grupo
                         });
                     }
                 });
@@ -141,6 +142,7 @@ async function carregarDadosXtream() {
                         const ext = item.container_extension || 'mp4';
 
                         baseLista.push({
+                            id: item.stream_id || index,
                             id_global: `movie_${item.stream_id || index}`,
                             stream_id: item.stream_id,
                             nome: nomeTratado,
@@ -153,11 +155,13 @@ async function carregarDadosXtream() {
                             poster: img,
                             group: grupo,
                             categoria: grupo,
+                            category_name: grupo,
                             category_id: item.category_id,
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
                             stream_url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
-                            tipoOriginal: "filme",
-                            type: "filme"
+                            tipoOriginal: grupo,
+                            tipoGeral: "filme",
+                            type: grupo
                         });
                     }
                 });
@@ -179,18 +183,18 @@ async function carregarDadosXtream() {
                 seriesData.forEach((item, index) => {
                     const grupo = catSeriesMap[item.category_id] || "Séries";
                     if (ehValido(item.name, grupo)) {
-                        let tipo = "series";
+                        let tipoGeral = "series";
                         const gLow = grupo.toLowerCase();
                         const nLow = item.name.toLowerCase();
-                        
                         if (gLow.includes("anime") || gLow.includes("crunchyroll") || nLow.includes("anime")) {
-                            tipo = "anime";
+                            tipoGeral = "anime";
                         }
 
                         const img = item.cover ? item.cover : capaPadrao;
                         const nomeTratado = limparNome(item.name);
 
                         baseLista.push({
+                            id: item.series_id || index,
                             id_global: `series_${item.series_id || index}`,
                             series_id: item.series_id,
                             nome: nomeTratado,
@@ -203,11 +207,13 @@ async function carregarDadosXtream() {
                             poster: img,
                             group: grupo,
                             categoria: grupo,
+                            category_name: grupo,
                             category_id: item.category_id,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
                             stream_url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            tipoOriginal: tipo,
-                            type: tipo
+                            tipoOriginal: grupo,
+                            tipoGeral: tipoGeral,
+                            type: grupo
                         });
                     }
                 });
@@ -216,5 +222,7 @@ async function carregarDadosXtream() {
     } catch (e) {
         console.error("Erro ao carregar dados:", e);
     }
+
+    window.listaCompletaSite = baseLista;
     return baseLista;
 }
