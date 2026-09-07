@@ -34,12 +34,11 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-// Define o Servidor 3 como inicial por ser o mais estável
-let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
+// Deixando o Servidor 1 como padrão para abrir mais rápido
+let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
 const PROXY_CORS = "https://corsproxy.io/?";
 
-// Função auxiliar para injetar o proxy caso o site esteja em HTTPS (Vercel)
 function criarUrlProxy(url) {
     if (window.location.protocol === 'https:' && url.startsWith('http:')) {
         return PROXY_CORS + encodeURIComponent(url);
@@ -47,9 +46,6 @@ function criarUrlProxy(url) {
     return url;
 }
 
-// ==========================================
-// MOTOR DE BUSCA E INTEGRAÇÃO DE CATEGORIAS
-// ==========================================
 async function carregarDadosXtream() {
     const server = XTREAM_CONFIG.server;
     const username = XTREAM_CONFIG.username;
@@ -73,7 +69,6 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CANAIS (LIVE STREAM)
         const catLiveMap = {};
         const resCatLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_categories`));
         if (resCatLive.ok) {
@@ -105,7 +100,6 @@ async function carregarDadosXtream() {
             }
         }
 
-        // 2. CARREGAR FILMES (VOD MOVIES)
         const catMoviesMap = {};
         const resCatMovies = await fetch(criarUrlProxy(`${baseUrl}&action=get_vod_categories`));
         if (resCatMovies.ok) {
@@ -133,7 +127,6 @@ async function carregarDadosXtream() {
             }
         }
 
-        // 3. CARREGAR SÉRIES E ANIMES
         const catSeriesMap = {};
         const resCatSeries = await fetch(criarUrlProxy(`${baseUrl}&action=get_series_categories`));
         if (resCatSeries.ok) {
@@ -157,7 +150,7 @@ async function carregarDadosXtream() {
                         }
                         baseLista.push({
                             id_global: `series_${item.series_id || index}`,
-                            series_id: item.series_id, // Guarda o ID real da série
+                            series_id: item.series_id,
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
