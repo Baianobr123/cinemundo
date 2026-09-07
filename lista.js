@@ -16,7 +16,7 @@ const XTREAM_SERVIDORES = {
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=https://digitalbr.cloud",
+        server: "https://digitalbr.cloud",
         username: "06858757",     
         password: "70745896"       
     },
@@ -34,14 +34,13 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
+let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
 const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
 function criarUrlProxy(url) {
-    if (window.location.protocol === 'https:' && url.startsWith('http:')) {
-        return PROXY_CORS + encodeURIComponent(url);
-    }
+    return PROXY_CORS + encodeURIComponent(url);
+}
     // Força o proxy do Render em links http para evitar bloqueio misto no GitHub Pages
     if (url.startsWith('http://')) {
         return PROXY_CORS + encodeURIComponent(url);
