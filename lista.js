@@ -4,13 +4,13 @@
 const XTREAM_SERVIDORES = {
     servidor1: {
         nome: "Servidor 1",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://xewte.top:80", 
+        server: "http://xewte.top:80", 
         username: "20264972071740",     
         password: "185660543698"       
     },
     servidor2: {
         nome: "Servidor 2",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://p2toptz.pro:80", 
+        server: "http://p2toptz.pro:80", 
         username: "111111",     
         password: "222222"       
     },
@@ -22,30 +22,25 @@ const XTREAM_SERVIDORES = {
     },
     servidor4: {
         nome: "Servidor 4",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://45.12.1.96:80", 
+        server: "http://45.12.1.96:80", 
         username: "001062",     
         password: "vymrux"       
     },
     servidor5: {
         nome: "Servidor 5",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://phs.lat", 
+        server: "http://phs.lat", 
         username: "243588267208",     
         password: "991"       
     }
 };
 
-let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
+let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
 const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
 function criarUrlProxy(url) {
+    // Força o proxy do Render em absolutamente qualquer link para blindar contra CORS e erro de conteúdo misto
     return PROXY_CORS + encodeURIComponent(url);
-}
-    // Força o proxy do Render em links http para evitar bloqueio misto no GitHub Pages
-    if (url.startsWith('http://')) {
-        return PROXY_CORS + encodeURIComponent(url);
-    }
-    return url;
 }
 
 async function carregarDadosXtream() {
