@@ -34,16 +34,12 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-// Iniciando direto no Servidor 1 para carregar rápido na Vercel
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
 const PROXY_CORS = "https://corsproxy.io/?";
 
 function criarUrlProxy(url) {
-    if (window.location.protocol === 'https:' && url.startsWith('http:')) {
-        return PROXY_CORS + encodeURIComponent(url);
-    }
-    return url;
+    return PROXY_CORS + encodeURIComponent(url);
 }
 
 // ==========================================
