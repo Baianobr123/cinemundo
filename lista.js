@@ -37,11 +37,11 @@ const XTREAM_SERVIDORES = {
 // Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-// FUNÇÃO PONTE: Redireciona a requisição para liberar o CORS no GitHub Pages
+// FUNÇÃO PONTE: Usa um proxy CORS rápido para requisições de listas pesadas
 function aplicarPonteCORS(urlOriginal) {
     if (!urlOriginal) return urlOriginal;
     if (window.location.protocol === 'https:' && urlOriginal.startsWith('http:')) {
-        return `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`;
+        return `https://corsproxy.io/?${encodeURIComponent(urlOriginal)}`;
     }
     return urlOriginal;
 }
