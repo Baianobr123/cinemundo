@@ -15,8 +15,8 @@ const XTREAM_SERVIDORES = {
         password: "222222"       
     },
     servidor3: {
-        nome: "Servidor 3 (Estável)",
-        server: "/api-xtream",
+        nome: "Servidor 3",
+        server: "http://digitalbr.cloud",
         username: "06858757",     
         password: "70745896"       
     },
@@ -34,7 +34,8 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
+// Iniciando direto no Servidor 1 para carregar rápido na Vercel
+let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
 const PROXY_CORS = "https://corsproxy.io/?";
 
@@ -71,7 +72,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CANAIS (LIVE STREAM) - Usando .m3u8 para HLS nativo no navegador
+        // 1. CARREGAR CANAIS (LIVE STREAM)
         const catLiveMap = {};
         const resCatLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_categories`));
         if (resCatLive.ok) {
@@ -95,7 +96,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `/live/${username}/${password}/${item.stream_id}.m3u8`,
+                            url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
@@ -123,7 +124,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
+                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                             tipoOriginal: "filme"
                         });
                     }
@@ -159,7 +160,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
-                            url: `/series/${username}/${password}/${item.series_id}`,
+                            url: `${server}/series/${username}/${password}/${item.series_id}`,
                             tipoOriginal: tipo
                         });
                     }
