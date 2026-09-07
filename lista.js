@@ -4,31 +4,31 @@
 const XTREAM_SERVIDORES = {
     servidor1: {
         nome: "Servidor 1",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://xewte.top:80", 
+        server: "http://xewte.top:80", 
         username: "20264972071740",     
         password: "185660543698"       
     },
     servidor2: {
         nome: "Servidor 2",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://p2toptz.pro:80", 
+        server: "http://p2toptz.pro:80", 
         username: "111111",     
         password: "222222"       
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=https://digitalbr.cloud",
+        server: "https://digitalbr.cloud",
         username: "06858757",     
         password: "70745896"       
     },
     servidor4: {
         nome: "Servidor 4",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=https://45.12.1.96:80", 
+        server: "http://45.12.1.96:80", 
         username: "001062",     
         password: "vymrux"       
     },
     servidor5: {
         nome: "Servidor 5",
-        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://phs.lat", 
+        server: "http://phs.lat", 
         username: "243588267208",     
         password: "991"       
     }
@@ -40,6 +40,10 @@ const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
 function criarUrlProxy(url) {
     if (window.location.protocol === 'https:' && url.startsWith('http:')) {
+        return PROXY_CORS + encodeURIComponent(url);
+    }
+    // Força o proxy do Render em links http para evitar bloqueio misto no GitHub Pages
+    if (url.startsWith('http://')) {
         return PROXY_CORS + encodeURIComponent(url);
     }
     return url;
@@ -87,12 +91,13 @@ async function carregarDadosXtream() {
                         if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
                             tipo = "24h";
                         }
+                        const urlOriginal = `${server}/live/${username}/${password}/${item.stream_id}.m3u8`;
                         baseLista.push({
                             id_global: `tv_${item.stream_id || index}`,
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
+                            url: criarUrlProxy(urlOriginal),
                             tipoOriginal: tipo
                         });
                     }
@@ -115,12 +120,13 @@ async function carregarDadosXtream() {
                 moviesData.forEach((item, index) => {
                     const grupo = catMoviesMap[item.category_id] || "Filmes";
                     if (ehValido(item.name, grupo)) {
+                        const urlOriginal = `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`;
                         baseLista.push({
                             id_global: `movie_${item.stream_id || index}`,
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
+                            url: criarUrlProxy(urlOriginal),
                             tipoOriginal: "filme"
                         });
                     }
@@ -150,13 +156,14 @@ async function carregarDadosXtream() {
                         if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime")) {
                             tipo = "anime";
                         }
+                        const urlOriginal = `${server}/series/${username}/${password}/${item.series_id}`;
                         baseLista.push({
                             id_global: `series_${item.series_id || index}`,
                             series_id: item.series_id,
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
-                            url: `${server}/series/${username}/${password}/${item.series_id}`,
+                            url: criarUrlProxy(urlOriginal),
                             tipoOriginal: tipo
                         });
                     }
