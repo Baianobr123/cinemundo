@@ -5,6 +5,24 @@
   force = true
 
 [[redirects]]
+  from = "/live/*"
+  to = "http://digitalbr.cloud/live/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/movie/*"
+  to = "http://digitalbr.cloud/movie/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/series/*"
+  to = "http://digitalbr.cloud/series/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
