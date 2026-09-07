@@ -71,7 +71,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CANAIS (LIVE STREAM)
+        // 1. CARREGAR CANAIS (LIVE STREAM) - Usando .m3u8 para HLS nativo no navegador
         const catLiveMap = {};
         const resCatLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_categories`));
         if (resCatLive.ok) {
@@ -95,7 +95,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `/live/${username}/${password}/${item.stream_id}.ts`,
+                            url: `/live/${username}/${password}/${item.stream_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
