@@ -538,7 +538,6 @@
                 const apiUrl = location.protocol === 'https:' ? PROXY_URL + encodeURIComponent(rawUrl) : rawUrl;
 
                 const res = await fetch(apiUrl);
-                
                 if (!res.ok) throw new Error("Erro HTTP");
 
                 const textData = await res.text();
@@ -546,7 +545,7 @@
                 try {
                     dados = JSON.parse(textData);
                 } catch(errJson) {
-                    throw new Error("O servidor retornou HTML inválido (Erro de MIME/CORS).");
+                    throw new Error("O servidor retornou HTML inválido.");
                 }
 
                 container.innerHTML = '';
@@ -554,71 +553,80 @@
                 if (dados && dados.episodes) {
                     let contadorIndex = 0;
                     let historicoVistos = obterHistorico();
-
-                    const temporadasChaves = Object.keys(dados.episodes);
-
-                    if (temporadasChaves.length > 0) {
+                    
+                    // Tratativa compatível para múltiplos formatos de retorno de API de séries
+                    let temporadasChaves = [];
+                    if (Array.isArray(dados.episodes)) {
+                        // Se vier em formato de array direto
+                        dados.episodes.forEach((epList, idx) => {
+                            if (Array.isArray(epList)) {
+                                epList.forEach(ep => processarEpisodioUnico(ep, idx + 1, contadorIndex++, seriesId, server, username, password, container, historicoVistos));
+                            }
+                        });
+                    } else {
+                        // Se vier em formato de objeto por chaves de temporada (ex: "1", "2")
+                        temporadasChaves = Object.keys(dados.episodes);
                         temporadasChaves.forEach(tempNum => {
                             const listaEps = dados.episodes[tempNum];
                             if (Array.isArray(listaEps)) {
                                 listaEps.forEach(ep => {
-                                    const epId = ep.id || ep.stream_id || ep.episode_num;
-                                    const epExt = ep.container_extension || ep.direct_source || 'mp4';
-                                    
-                                    const epUrl = `${server}/series/${username}/${password}/${epId}.${epExt}`;
-                                    const epNome = `T${tempNum} - Ep. ${ep.episode_num || (contadorIndex + 1)}: ${ep.title || 'Episódio'}`;
-                                    const uniqueEpId = `ep_${seriesId}_${epId}`;
-
-                                    playlistEpisodios.push({ 
-                                        url: epUrl, 
-                                        nome: epNome, 
-                                        tipo: 'vod-series', 
-                                        index: contadorIndex,
-                                        idHistorico: uniqueEpId 
-                                    });
-
-                                    const el = document.createElement('div');
-                                    el.classList.add('stream-item');
-                                    if (historicoVistos.includes(uniqueEpId)) {
-                                        el.classList.add('watched');
-                                    }
-                                    el.setAttribute('data-index', contadorIndex);
-                                    el.setAttribute('id', `dom-${uniqueEpId}`);
-                                    el.innerHTML = `
-                                        <div class="stream-item-text">
-                                            <span class="watched-eye">👁️</span>
-                                            <span>${epNome}</span>
-                                        </div>
-                                        <div class="stream-actions">
-                                            <button class="info-badge-btn" style="background:var(--accent-red);font-size:0.65rem;width:auto;border-radius:6px;padding:2px 8px;">PLAY</button>
-                                        </div>
-                                    `;
-                                    
-                                    const currentIndexSalvo = contadorIndex;
-                                    const acaoPlay = () => {
-                                        executarEpisodioPorIndice(currentIndexSalvo);
-                                    };
-
-                                    el.querySelector('.stream-item-text').onclick = acaoPlay;
-                                    el.querySelector('button').onclick = acaoPlay;
-
-                                    container.appendChild(el);
-                                    contadorIndex++;
+                                    processarEpisodioUnico(ep, tempNum, contadorIndex++, seriesId, server, username, password, container, historicoVistos);
                                 });
                             }
                         });
+                    }
 
-                        if (playlistEpisodios.length > 0) {
-                            executarEpisodioPorIndice(0);
-                            return;
-                        }
+                    if (playlistEpisodios.length > 0) {
+                        executarEpisodioPorIndice(0);
+                        return;
                     }
                 }
                 throw new Error("Nenhum episódio encontrado");
             } catch (err) {
                 console.error("Erro ao carregar episódios:", err);
-                container.innerHTML = `<div style="padding:15px;color:var(--accent-red);">Erro ao carregar episódios deste servidor (Bloqueio de CORS/MIME). Tente trocar de servidor no topo.</div>`;
+                container.innerHTML = `<div style="padding:15px;color:var(--accent-red);">Erro ao carregar episódios deste servidor. Tente outro servidor no topo.</div>`;
             }
+        }
+
+        function processarEpisodioUnico(ep, tempNum, contadorIndex, seriesId, server, username, password, container, historicoVistos) {
+            const epId = ep.id || ep.stream_id || ep.episode_num;
+            const epExt = ep.container_extension || 'mp4';
+            
+            const epUrl = `${server}/series/${username}/${password}/${epId}.${epExt}`;
+            const epNumFormatado = ep.episode_num || (contadorIndex + 1);
+            const epNome = `T${tempNum} - Ep. ${epNumFormatado}: ${ep.title || 'Episódio'}`;
+            const uniqueEpId = `ep_${seriesId}_${epId}`;
+
+            playlistEpisodios.push({ 
+                url: epUrl, 
+                nome: epNome, 
+                tipo: 'vod-series', 
+                index: contadorIndex,
+                idHistorico: uniqueEpId 
+            });
+
+            const el = document.createElement('div');
+            el.classList.add('stream-item');
+            if (historicoVistos.includes(uniqueEpId)) {
+                el.classList.add('watched');
+            }
+            el.setAttribute('data-index', contadorIndex);
+            el.setAttribute('id', `dom-${uniqueEpId}`);
+            el.innerHTML = `
+                <div class="stream-item-text">
+                    <span class="watched-eye">👁️</span>
+                    <span>${epNome}</span>
+                </div>
+                <div class="stream-actions">
+                    <button class="info-badge-btn" style="background:var(--accent-red);font-size:0.65rem;width:auto;border-radius:6px;padding:2px 8px;">PLAY</button>
+                </div>
+            `;
+            
+            const acaoPlay = () => executarEpisodioPorIndice(contadorIndex);
+            el.querySelector('.stream-item-text').onclick = acaoPlay;
+            el.querySelector('button').onclick = acaoPlay;
+
+            container.appendChild(el);
         }
 
         function executarEpisodioPorIndice(index) {
