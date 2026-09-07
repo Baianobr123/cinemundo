@@ -16,7 +16,7 @@ const XTREAM_SERVIDORES = {
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "/api-xtream/",
+        server: "/api-xtream",
         username: "06858757",     
         password: "70745896"       
     },
@@ -34,12 +34,10 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-// Define o Servidor 3 como inicial por ser o mais estável
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
 const PROXY_CORS = "https://corsproxy.io/?";
 
-// Função auxiliar para injetar o proxy caso o site esteja em HTTPS (Vercel)
 function criarUrlProxy(url) {
     if (window.location.protocol === 'https:' && url.startsWith('http:')) {
         return PROXY_CORS + encodeURIComponent(url);
@@ -97,7 +95,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
+                            url: `/live/${username}/${password}/${item.stream_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
@@ -125,7 +123,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
+                            url: `/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                             tipoOriginal: "filme"
                         });
                     }
@@ -157,11 +155,11 @@ async function carregarDadosXtream() {
                         }
                         baseLista.push({
                             id_global: `series_${item.series_id || index}`,
-                            series_id: item.series_id, // Guarda o ID real da série
+                            series_id: item.series_id,
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
-                            url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
+                            url: `/series/${username}/${password}/${item.series_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
