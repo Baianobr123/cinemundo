@@ -37,7 +37,7 @@ const XTREAM_SERVIDORES = {
 // Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-// FUNÇÃO PONTE: Usa um proxy CORS rápido para requisições de listas pesadas
+// FUNÇÃO PONTE: Converte URLs HTTP em conexões HTTPS seguras aceitas pelo GitHub Pages
 function aplicarPonteCORS(urlOriginal) {
     if (!urlOriginal) return urlOriginal;
     if (window.location.protocol === 'https:' && urlOriginal.startsWith('http:')) {
