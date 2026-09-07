@@ -36,7 +36,7 @@ const XTREAM_SERVIDORES = {
 
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
-const PROXY_CORS = "https://corsproxy.io/?";
+const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
 function criarUrlProxy(url) {
     if (window.location.protocol === 'https:' && url.startsWith('http:')) {
