@@ -554,24 +554,26 @@
                     let contadorIndex = 0;
                     let historicoVistos = obterHistorico();
                     
-                    // Tratativa compatível para múltiplos formatos de retorno de API de séries
-                    let temporadasChaves = [];
                     if (Array.isArray(dados.episodes)) {
-                        // Se vier em formato de array direto
                         dados.episodes.forEach((epList, idx) => {
                             if (Array.isArray(epList)) {
                                 epList.forEach(ep => processarEpisodioUnico(ep, idx + 1, contadorIndex++, seriesId, server, username, password, container, historicoVistos));
                             }
                         });
                     } else {
-                        // Se vier em formato de objeto por chaves de temporada (ex: "1", "2")
-                        temporadasChaves = Object.keys(dados.episodes);
+                        // Correção robusta para objetos/dicionários de temporadas retornados por diferentes servidores Xtream
+                        const temporadasChaves = Object.keys(dados.episodes);
                         temporadasChaves.forEach(tempNum => {
-                            const listaEps = dados.episodes[tempNum];
-                            if (Array.isArray(listaEps)) {
-                                listaEps.forEach(ep => {
-                                    processarEpisodioUnico(ep, tempNum, contadorIndex++, seriesId, server, username, password, container, historicoVistos);
-                                });
+                            let listaEps = dados.episodes[tempNum];
+                            if (listaEps) {
+                                if (!Array.isArray(listaEps) && typeof listaEps === 'object') {
+                                    listaEps = Object.values(listaEps);
+                                }
+                                if (Array.isArray(listaEps)) {
+                                    listaEps.forEach(ep => {
+                                        processarEpisodioUnico(ep, tempNum, contadorIndex++, seriesId, server, username, password, container, historicoVistos);
+                                    });
+                                }
                             }
                         });
                     }
@@ -584,7 +586,7 @@
                 throw new Error("Nenhum episódio encontrado");
             } catch (err) {
                 console.error("Erro ao carregar episódios:", err);
-                container.innerHTML = `<div style="padding:15px;color:var(--accent-red);">Erro ao carregar episódios deste servidor. Tente outro servidor no topo.</div>`;
+                container.innerHTML = `<div style="padding:15px;color:var(--accent-red);">Nenhum episódio localizado ou servidor indisponível.</div>`;
             }
         }
 
