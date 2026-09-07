@@ -73,7 +73,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CANAIS AO VIVO
+        // 1. CANAIS AO VIVO
         const catLiveMap = {};
         const resCatLive = await fetch(`${baseUrl}&action=get_live_categories`);
         if (resCatLive.ok) {
@@ -89,9 +89,7 @@ async function carregarDadosXtream() {
                     const grupo = catLiveMap[item.category_id] || "TV ao Vivo";
                     if (ehValido(item.name, grupo)) {
                         let tipoGeral = "tv";
-                        if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
-                            tipoGeral = "24h";
-                        }
+                        if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) tipoGeral = "24h";
                         const img = item.stream_icon ? item.stream_icon : capaPadrao;
                         const nomeTratado = limparNome(item.name);
                         
@@ -113,16 +111,15 @@ async function carregarDadosXtream() {
                             category_id: item.category_id,
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             stream_url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            tipoOriginal: grupo, // Permite filtrar pelo nome exato da categoria
-                            tipoGeral: tipoGeral,
-                            type: grupo
+                            tipoOriginal: tipoGeral,
+                            type: tipoGeral
                         });
                     }
                 });
             }
         }
 
-        // 2. CARREGAR FILMES
+        // 2. FILMES
         const catMoviesMap = {};
         const resCatMovies = await fetch(`${baseUrl}&action=get_vod_categories`);
         if (resCatMovies.ok) {
@@ -159,16 +156,15 @@ async function carregarDadosXtream() {
                             category_id: item.category_id,
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
                             stream_url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
-                            tipoOriginal: grupo,
-                            tipoGeral: "filme",
-                            type: grupo
+                            tipoOriginal: "filme",
+                            type: "filme"
                         });
                     }
                 });
             }
         }
 
-        // 3. CARREGAR SÉRIES
+        // 3. SÉRIES
         const catSeriesMap = {};
         const resCatSeries = await fetch(`${baseUrl}&action=get_series_categories`);
         if (resCatSeries.ok) {
@@ -186,9 +182,7 @@ async function carregarDadosXtream() {
                         let tipoGeral = "series";
                         const gLow = grupo.toLowerCase();
                         const nLow = item.name.toLowerCase();
-                        if (gLow.includes("anime") || gLow.includes("crunchyroll") || nLow.includes("anime")) {
-                            tipoGeral = "anime";
-                        }
+                        if (gLow.includes("anime") || gLow.includes("crunchyroll") || nLow.includes("anime")) tipoGeral = "anime";
 
                         const img = item.cover ? item.cover : capaPadrao;
                         const nomeTratado = limparNome(item.name);
@@ -211,9 +205,8 @@ async function carregarDadosXtream() {
                             category_id: item.category_id,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
                             stream_url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            tipoOriginal: grupo,
-                            tipoGeral: tipoGeral,
-                            type: grupo
+                            tipoOriginal: tipoGeral,
+                            type: tipoGeral
                         });
                     }
                 });
@@ -224,5 +217,44 @@ async function carregarDadosXtream() {
     }
 
     window.listaCompletaSite = baseLista;
+    window.baseLista = baseLista;
     return baseLista;
+}
+
+// Intercepta os cliques no seu layout para desenhar os cards na tela
+document.addEventListener("click", function (e) {
+    const cardCat = e.target.closest(".card-categoria, [onclick*='abrirCategoria']");
+    if (cardCat) {
+        const tituloEl = cardCat.querySelector("h3, .title, strong") || cardCat;
+        const nomeCategoria = tituloEl.innerText.split("\n")[0].trim();
+        
+        setTimeout(() => {
+            renderizarCardsCustom(nomeCategoria);
+        }, 50);
+    }
+});
+
+function renderizarCardsCustom(nomeCategoria) {
+    const container = document.querySelector("#conteudo-principal, #grid-conteudo, main, .content") || document.body;
+    const lista = window.listaCompletaSite || window.baseLista || [];
+    
+    // Filtra pelo nome exato da categoria clicada
+    const itens = lista.filter(item => item.group === nomeCategoria || item.categoria === nomeCategoria);
+    
+    // Procura o container onde a lista vazia estava aparecendo
+    const areaCards = container.querySelector(".grid-cards, #cards-container, .lista-itens") || container;
+
+    if (itens.length > 0) {
+        let htmlCards = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 20px;">`;
+        itens.forEach(item => {
+            htmlCards += `
+                <div class="card-item" onclick="window.open('${item.url}', '_blank')" style="background: #121829; border-radius: 8px; overflow: hidden; cursor: pointer; text-align: center;">
+                    <img src="${item.logo}" alt="${item.nome}" style="width: 100%; height: 210px; object-fit: cover;" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg';">
+                    <div style="padding: 8px; color: #fff; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nome}</div>
+                </div>
+            `;
+        });
+        htmlCards += `</div>`;
+        areaCards.innerHTML = htmlCards;
+    }
 }
