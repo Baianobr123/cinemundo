@@ -3,49 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cine Mundo BHS</title>
+    <title>Cine Mundo BHS - Mobile & PC</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { background-color: #0b0e14; color: #fff; padding: 20px; }
-        
-        header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid #1a2332; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .logo { font-size: 24px; font-weight: bold; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #060913; color: #fff; padding: 20px; }
+
+        /* Topo / Header */
+        header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid #101728; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .logo { font-size: 26px; font-weight: 800; tracking: 1px; }
         .logo span { color: #e50914; }
-
-        .btn-voltar { background: #1a2332; color: #fff; border: 1px solid #2d3b53; padding: 8px 16px; border-radius: 20px; cursor: pointer; margin-bottom: 20px; display: inline-block; }
-        .btn-voltar:hover { background: #2d3b53; }
-
-        .grid-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .card-categoria { background: #121829; border: 1px solid #1a2332; padding: 20px; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; }
-        .card-categoria:hover { border-color: #e50914; transform: translateY(-3px); }
-        .card-categoria h3 { font-size: 14px; margin-bottom: 8px; color: #fff; }
-        .card-categoria span { font-size: 12px; color: #64748b; }
-
-        .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .card-item { background: #121829; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #1a2332; transition: 0.2s; }
-        .card-item:hover { border-color: #e50914; transform: scale(1.02); }
-        .card-item img { width: 100%; height: 210px; object-fit: cover; background: #1a2332; }
-        .card-item h4 { font-size: 12px; padding: 10px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
         
-        #titulo-secao { margin-bottom: 15px; font-size: 18px; }
+        .nav-filtros { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-filtro { background: #121829; color: #a0aec0; border: 1px solid #1f293d; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; }
+        .btn-filtro:hover, .btn-filtro.ativo { background: #e50914; color: #fff; border-color: #e50914; }
+
+        /* Títulos */
+        .secao-titulo { font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .secao-titulo::before { content: ''; width: 4px; height: 18px; background: #e50914; display: inline-block; border-radius: 2px; }
+
+        .btn-voltar { background: #121829; color: #fff; border: 1px solid #1f293d; padding: 8px 16px; border-radius: 20px; cursor: pointer; margin-bottom: 20px; font-size: 13px; font-weight: 600; transition: 0.2s; }
+        .btn-voltar:hover { background: #1f293d; }
+
+        /* Grid de Categorias */
+        .grid-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .card-categoria { background: #0d121f; border: 1px solid #151d30; padding: 22px 15px; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s ease; }
+        .card-categoria:hover { border-color: #e50914; transform: translateY(-3px); background: #121829; }
+        .card-categoria h3 { font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 6px; text-transform: uppercase; }
+        .card-categoria span { font-size: 12px; color: #64748b; font-weight: 500; }
+
+        /* Grid de Items (Cards de Canais / Filmes) */
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px; }
+        .card-item { background: #0d121f; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #151d30; transition: all 0.2s ease; position: relative; }
+        .card-item:hover { border-color: #e50914; transform: scale(1.03); }
+        .card-item img { width: 100%; height: 230px; object-fit: cover; background: #121829; display: block; }
+        .card-item h4 { font-size: 13px; padding: 12px 10px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e2e8f0; font-weight: 600; }
     </style>
 </head>
 <body>
 
     <header>
         <div class="logo">CINE MUNDO <span>BHS</span></div>
+        <div class="nav-filtros">
+            <button class="btn-filtro ativo" onclick="filtrarTipo('todos', this)">Todas Categorias</button>
+            <button class="btn-filtro" onclick="filtrarTipo('tv', this)">TV ao Vivo</button>
+            <button class="btn-filtro" onclick="filtrarTipo('series', this)">Séries</button>
+            <button class="btn-filtro" onclick="filtrarTipo('anime', this)">Animes</button>
+            <button class="btn-filtro" onclick="filtrarTipo('filme', this)">Filmes</button>
+            <button class="btn-filtro" onclick="filtrarTipo('24h', this)">Canais 24h</button>
+        </div>
     </header>
 
     <div id="painel-conteudo">
-        <h2 id="titulo-secao">Categorias do Servidor</h2>
+        <h2 id="titulo-secao" class="secao-titulo">Categorias do Servidor</h2>
         <div id="grid-principal" class="grid-categorias">
-            <p style="color: #64748b;">Carregando dados...</p>
+            <p style="color: #64748b; padding: 20px;">Carregando dados do servidor...</p>
         </div>
     </div>
 
     <script src="lista.js"></script>
     <script>
         let dadosCompletos = [];
+        let filtroAtivo = "todos";
 
         document.addEventListener("DOMContentLoaded", async () => {
             if (typeof carregarDadosXtream === "function") {
@@ -54,16 +72,29 @@
             }
         });
 
+        function filtrarTipo(tipo, btn) {
+            filtroAtivo = tipo;
+            document.querySelectorAll(".btn-filtro").forEach(b => b.classList.remove("ativo"));
+            if (btn) btn.classList.add("ativo");
+            renderizarCategorias();
+        }
+
         function renderizarCategorias() {
             const container = document.getElementById("grid-principal");
             const titulo = document.getElementById("titulo-secao");
-            
-            container.className = "grid-categorias";
-            titulo.innerText = "Categorias do Servidor";
+            const painel = document.getElementById("painel-conteudo");
 
-            // Agrupa por grupo/categoria
+            painel.innerHTML = `
+                <h2 id="titulo-secao" class="secao-titulo">Categorias do Servidor</h2>
+                <div id="grid-principal" class="grid-categorias"></div>
+            `;
+
+            const gridContainer = document.getElementById("grid-principal");
             const gruposMap = {};
+
             dadosCompletos.forEach(item => {
+                if (filtroAtivo !== "todos" && item.tipoGeral !== filtroAtivo) return;
+
                 const g = item.group || item.categoria || "Geral";
                 gruposMap[g] = (gruposMap[g] || 0) + 1;
             });
@@ -72,24 +103,23 @@
             for (const [nome, qtd] of Object.entries(gruposMap)) {
                 html += `
                     <div class="card-categoria" onclick="abrirCategoria('${nome.replace(/'/g, "\\'")}')">
-                        <h3>${nome}</h3>
+                        <h3>◆ ${nome}</h3>
                         <span>${qtd} título(s)</span>
                     </div>
                 `;
             }
 
-            container.innerHTML = html || "<p>Nenhum conteúdo encontrado.</p>";
+            gridContainer.innerHTML = html || "<p style='color:#64748b; padding:20px;'>Nenhum conteúdo nesta seção.</p>";
         }
 
         function abrirCategoria(nomeCategoria) {
-            const container = document.getElementById("grid-principal");
             const painel = document.getElementById("painel-conteudo");
 
             const itens = dadosCompletos.filter(item => item.group === nomeCategoria || item.categoria === nomeCategoria);
 
             let html = `
                 <button class="btn-voltar" onclick="renderizarCategorias()">← Voltar para Categorias</button>
-                <h2 style="margin-bottom: 15px; font-size: 18px;">${nomeCategoria}</h2>
+                <h2 class="secao-titulo">◆ ${nomeCategoria}</h2>
                 <div class="grid-cards">
             `;
 
@@ -97,13 +127,13 @@
                 html += `<p style="color: #64748b;">Nenhum item nesta categoria.</p>`;
             } else {
                 itens.forEach(item => {
-                    const capa = item.logo || item.cover || item.stream_icon || 'https://via.placeholder.com/150';
+                    const capa = item.logo || item.cover || item.stream_icon || 'https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg';
                     const nome = item.nome || item.name || 'Sem título';
                     const url = item.url || item.stream_url || '#';
 
                     html += `
-                        <div class="card-item" onclick="window.open('${url}', '_blank')">
-                            <img src="${capa}" alt="${nome}" onerror="this.src='https://via.placeholder.com/150';">
+                        <div class="card-item" onclick="if(typeof tocarStream === 'function'){ tocarStream('${url}', '${nome.replace(/'/g, "\\'")}'); } else { window.open('${url}', '_blank'); }">
+                            <img src="${capa}" alt="${nome}" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg';">
                             <h4>${nome}</h4>
                         </div>
                     `;
