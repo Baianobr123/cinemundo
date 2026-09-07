@@ -39,7 +39,6 @@ let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
 function criarUrlProxy(url) {
-    // Força o proxy do Render em absolutamente qualquer link para blindar contra CORS e erro de conteúdo misto
     return PROXY_CORS + encodeURIComponent(url);
 }
 
@@ -152,7 +151,7 @@ async function carregarDadosXtream() {
                         }
                         const urlOriginal = `${server}/series/${username}/${password}/${item.series_id}`;
                         baseLista.push({
-                            id_global: `series_${item.series_id || index}`,
+							id_global: `series_${item.series_id || index}`,
                             series_id: item.series_id,
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
