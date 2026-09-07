@@ -16,19 +16,18 @@ const XTREAM_SERVIDORES = {
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "/api-xtream", // Usa a ponte do Netlify
+        server: "/api-xtream",
+        rawServer: "http://digitalbr.cloud",
         username: "06858757",     
         password: "70745896"       
     }
 };
 
-// Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-// Chave pública do TMDB para carregar capas e sinopses em PT-BR
+// Chave do TMDB
 const TMDB_API_KEY = "15d2fb6fe615161b361a1200155b410f";
 
-// Função para buscar info extra no TMDB (sinopse/capa)
 async function buscarInfoTMDB(nome, tipo = "movie") {
     try {
         const nomeLimpo = encodeURIComponent(nome.replace(/\b(4k|1080p|720p|dublado|legendado|hd)\b/gi, "").trim());
@@ -46,7 +45,7 @@ async function buscarInfoTMDB(nome, tipo = "movie") {
             }
         }
     } catch (e) {
-        console.error("Erro ao buscar no TMDB:", e);
+        console.error("Erro TMDB:", e);
     }
     return null;
 }
@@ -56,6 +55,7 @@ async function buscarInfoTMDB(nome, tipo = "movie") {
 // ==========================================
 async function carregarDadosXtream() {
     const server = XTREAM_CONFIG.server;
+    const rawServer = XTREAM_CONFIG.rawServer || server;
     const username = XTREAM_CONFIG.username;
     const password = XTREAM_CONFIG.password;
     
@@ -77,7 +77,7 @@ async function carregarDadosXtream() {
     }
 
     try {
-        // 1. CARREGAR CANAIS (LIVE STREAM)
+        // 1. CARREGAR CANAIS
         const catLiveMap = {};
         const resCatLive = await fetch(`${baseUrl}&action=get_live_categories`);
         if (resCatLive.ok) {
@@ -98,11 +98,12 @@ async function carregarDadosXtream() {
                         }
                         baseLista.push({
                             id_global: `tv_${item.stream_id || index}`,
+                            stream_id: item.stream_id,
                             nome: limparNome(item.name),
-                            logo: item.stream_icon ? item.stream_icon : capaPadrao,
+                            logo: item.stream_icon && item.stream_icon.startsWith("http") ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            // URL ajustada para usar a rota do Netlify no player
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
+                            raw_url: `${rawServer}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
@@ -110,7 +111,7 @@ async function carregarDadosXtream() {
             }
         }
 
-        // 2. CARREGAR FILMES (VOD MOVIES)
+        // 2. CARREGAR FILMES
         const catMoviesMap = {};
         const resCatMovies = await fetch(`${baseUrl}&action=get_vod_categories`);
         if (resCatMovies.ok) {
@@ -129,10 +130,10 @@ async function carregarDadosXtream() {
                             id_global: `movie_${item.stream_id || index}`,
                             stream_id: item.stream_id,
                             nome: limparNome(item.name),
-                            logo: item.stream_icon ? item.stream_icon : capaPadrao,
+                            logo: item.stream_icon && item.stream_icon.startsWith("http") ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            // URL do vídeo apontando para o Netlify
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
+                            raw_url: `${rawServer}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                             tipoOriginal: "filme"
                         });
                     }
@@ -166,9 +167,10 @@ async function carregarDadosXtream() {
                             id_global: `series_${item.series_id || index}`,
                             series_id: item.series_id,
                             nome: limparNome(item.name),
-                            logo: item.cover ? item.cover : capaPadrao,
+                            logo: item.cover && item.cover.startsWith("http") ? item.cover : capaPadrao,
                             group: grupo,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
+                            raw_url: `${rawServer}/series/${username}/${password}/${item.series_id}.m3u8`,
                             tipoOriginal: tipo
                         });
                     }
@@ -176,7 +178,7 @@ async function carregarDadosXtream() {
             }
         }
     } catch (e) {
-        console.error("Erro ao carregar dados:", e);
+        console.error("Erro ao carregar lista:", e);
     }
     return baseLista;
 }
