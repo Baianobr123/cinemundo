@@ -34,10 +34,11 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-// Define o Servidor 3 como inicial por ser o mais estável
+// Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-const PROXY_CORS = "https://corsproxy.io/?";
+// Proxy otimizado para lidar com requisições API contendo parâmetros query
+const PROXY_CORS = "https://api.allorigins.win/raw?url=";
 
 // Função para contornar Mixed Content (HTTP em páginas HTTPS)
 function criarUrlProxy(url) {
@@ -170,7 +171,7 @@ async function carregarDadosXtream() {
             }
         }
     } catch (e) {
-        console.error("Erro geral na sincronização:", e);
+        console.error("Erro na busca de dados:", e);
     }
     return baseLista;
 }
