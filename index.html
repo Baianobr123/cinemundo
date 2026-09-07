@@ -661,57 +661,71 @@
         }
 
         function darPlay(url, nome, tipo) {
-            const video = document.getElementById('native-player');
-            document.getElementById('player-current-stream').innerText = `Fonte: ${nome}`;
-            
-            if (hlsInstance) {
-                hlsInstance.destroy();
-                hlsInstance = null;
-            }
+    const video = document.getElementById('native-player');
+    document.getElementById('player-current-stream').innerText = `Fonte: ${nome}`;
+    
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
 
-            video.removeAttribute('src');
-            video.load();
+    video.removeAttribute('src');
+    video.load();
 
-            let targetUrl = url;
-            if (location.protocol === 'https:' && targetUrl.startsWith('http:')) {
-                targetUrl = PROXY_URL + encodeURIComponent(targetUrl);
-            }
+    let targetUrl = url;
+    
+    // Se estiver no Netlify (HTTPS) e a lista for HTTP, o ideal para testes 
+    // é tentar abrir direto ou usar um proxy dedicado a HLS.
+    // Vamos tentar carregar direto se o HLS.js suportar o fetch via proxy de segmentos:
+    if (location.protocol === 'https:' && targetUrl.startsWith('http:')) {
+        // Trocamos para um proxy alternativo que suporta melhor headers de vídeo ou forçamos o HLS
+        targetUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+    }
 
-            if (tipo === 'tv' || tipo === '24h') {
-                if (Hls.isSupported()) {
-                    hlsInstance = new Hls({
-                        enableWorker: true,
-                        lowLatencyMode: true,
-                        backBufferLength: 0,
-                        maxBufferLength: 8,
-                        maxMaxBufferLength: 15
-                    });
-                    hlsInstance.loadSource(targetUrl);
-                    hlsInstance.attachMedia(video);
-                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-                } else {
-                    video.src = targetUrl;
-                    video.play().catch(() => {});
-                }
-            } else {
-                if (targetUrl.includes('.m3u8')) {
-                    if (Hls.isSupported()) {
-                        hlsInstance = new Hls();
-                        hlsInstance.loadSource(targetUrl);
-                        hlsInstance.attachMedia(video);
-                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        video.src = targetUrl;
-                        video.play().catch(() => {});
+    if (tipo === 'tv' || tipo === '24h' || targetUrl.includes('.m3u8')) {
+        if (Hls.isSupported()) {
+            hlsInstance = new Hls({
+                xhrSetup: function (xhr, endpoint) {
+                    // Força o xhr a passar pelo proxy se necessário nos segmentos do HLS
+                    if (location.protocol === 'https:' && endpoint.startsWith('http:')) {
+                        xhr.open('GET', "https://corsproxy.io/?" + encodeURIComponent(endpoint), true);
                     }
-                } else {
-                    video.src = targetUrl;
-                    video.play().catch((err) => {
-                        console.error("Erro ao reproduzir arquivo direto:", err);
-                    });
                 }
-            }
+            });
+            
+            hlsInstance.loadSource(targetUrl);
+            hlsInstance.attachMedia(video);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(e => console.log("Play bloqueado pelo navegador:", e));
+            });
+            hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                console.warn("Erro no HLS.js:", data.details);
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.error("Erro de rede no canal ao vivo. O Netlify bloqueou o fluxo HTTP.");
+                            hlsInstance.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hlsInstance.recoverMediaError();
+                            break;
+                        default:
+                            hlsInstance.destroy();
+                            break;
+                    }
+                }
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = targetUrl;
+            video.play().catch(() => {});
         }
+    } else {
+        video.src = targetUrl;
+        video.play().catch((err) => {
+            console.error("Erro ao reproduzir arquivo direto:", err);
+        });
+    }
+}
 
         function fecharPlayer() {
             document.getElementById('view-player').style.display = 'none';
