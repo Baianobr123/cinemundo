@@ -16,34 +16,39 @@ const XTREAM_SERVIDORES = {
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "/api-xtream",
+        server: "/api-xtream", // Usa a ponte do Netlify
         username: "06858757",     
         password: "70745896"       
-    },
-    servidor4: {
-        nome: "Servidor 4",
-        server: "https://45.12.1.96:80", 
-        username: "001062",     
-        password: "vymrux"       
-    },
-    servidor5: {
-        nome: "Servidor 5",
-        server: "http://phs.lat", 
-        username: "243588267208",     
-        password: "991"       
     }
 };
 
 // Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-// FUNÇÃO PONTE: Contorna o bloqueio HTTPS/HTTP usando serviço seguro de rota
-function aplicarPonteCORS(urlOriginal) {
-    if (!urlOriginal) return urlOriginal;
-    if (window.location.protocol === 'https:' && urlOriginal.startsWith('http:')) {
-        return `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`;
+// Chave pública do TMDB para carregar capas e sinopses em PT-BR
+const TMDB_API_KEY = "15d2fb6fe615161b361a1200155b410f";
+
+// Função para buscar info extra no TMDB (sinopse/capa)
+async function buscarInfoTMDB(nome, tipo = "movie") {
+    try {
+        const nomeLimpo = encodeURIComponent(nome.replace(/\b(4k|1080p|720p|dublado|legendado|hd)\b/gi, "").trim());
+        const url = `https://api.themoviedb.org/3/search/${tipo}?api_key=${TMDB_API_KEY}&query=${nomeLimpo}&language=pt-BR`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+                const item = data.results[0];
+                return {
+                    sinopse: item.overview || "Sem sinopse disponível.",
+                    capa: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
+                    backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : null
+                };
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao buscar no TMDB:", e);
     }
-    return urlOriginal;
+    return null;
 }
 
 // ==========================================
@@ -74,13 +79,13 @@ async function carregarDadosXtream() {
     try {
         // 1. CARREGAR CANAIS (LIVE STREAM)
         const catLiveMap = {};
-        const resCatLive = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_live_categories`));
+        const resCatLive = await fetch(`${baseUrl}&action=get_live_categories`);
         if (resCatLive.ok) {
             const cats = await resCatLive.json();
             if (Array.isArray(cats)) cats.forEach(c => catLiveMap[c.category_id] = c.category_name);
         }
 
-        const resLive = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_live_streams`));
+        const resLive = await fetch(`${baseUrl}&action=get_live_streams`);
         if (resLive.ok) {
             const liveData = await resLive.json();
             if (Array.isArray(liveData)) {
@@ -94,8 +99,9 @@ async function carregarDadosXtream() {
                         baseLista.push({
                             id_global: `tv_${item.stream_id || index}`,
                             nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                            logo: item.stream_icon ? item.stream_icon : capaPadrao,
                             group: grupo,
+                            // URL ajustada para usar a rota do Netlify no player
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             tipoOriginal: tipo
                         });
@@ -106,13 +112,13 @@ async function carregarDadosXtream() {
 
         // 2. CARREGAR FILMES (VOD MOVIES)
         const catMoviesMap = {};
-        const resCatMovies = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_vod_categories`));
+        const resCatMovies = await fetch(`${baseUrl}&action=get_vod_categories`);
         if (resCatMovies.ok) {
             const cats = await resCatMovies.json();
             if (Array.isArray(cats)) cats.forEach(c => catMoviesMap[c.category_id] = c.category_name);
         }
 
-        const resMovies = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_vod_streams`));
+        const resMovies = await fetch(`${baseUrl}&action=get_vod_streams`);
         if (resMovies.ok) {
             const moviesData = await resMovies.json();
             if (Array.isArray(moviesData)) {
@@ -121,9 +127,11 @@ async function carregarDadosXtream() {
                     if (ehValido(item.name, grupo)) {
                         baseLista.push({
                             id_global: `movie_${item.stream_id || index}`,
+                            stream_id: item.stream_id,
                             nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                            logo: item.stream_icon ? item.stream_icon : capaPadrao,
                             group: grupo,
+                            // URL do vídeo apontando para o Netlify
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`,
                             tipoOriginal: "filme"
                         });
@@ -132,15 +140,15 @@ async function carregarDadosXtream() {
             }
         }
 
-        // 3. CARREGAR SÉRIES E ANIMES
+        // 3. CARREGAR SÉRIES
         const catSeriesMap = {};
-        const resCatSeries = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_series_categories`));
+        const resCatSeries = await fetch(`${baseUrl}&action=get_series_categories`);
         if (resCatSeries.ok) {
             const cats = await resCatSeries.json();
             if (Array.isArray(cats)) cats.forEach(c => catSeriesMap[c.category_id] = c.category_name);
         }
 
-        const resSeries = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_series`));
+        const resSeries = await fetch(`${baseUrl}&action=get_series`);
         if (resSeries.ok) {
             const seriesData = await resSeries.json();
             if (Array.isArray(seriesData)) {
@@ -151,14 +159,14 @@ async function carregarDadosXtream() {
                         const gLow = grupo.toLowerCase();
                         const nLow = item.name.toLowerCase();
                         
-                        if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime")) {
+                        if (gLow.includes("anime") || gLow.includes("crunchyroll") || nLow.includes("anime")) {
                             tipo = "anime";
                         }
                         baseLista.push({
                             id_global: `series_${item.series_id || index}`,
                             series_id: item.series_id,
                             nome: limparNome(item.name),
-                            logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
+                            logo: item.cover ? item.cover : capaPadrao,
                             group: grupo,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
                             tipoOriginal: tipo
@@ -168,7 +176,7 @@ async function carregarDadosXtream() {
             }
         }
     } catch (e) {
-        console.error("Erro na busca de dados via ponte:", e);
+        console.error("Erro ao carregar dados:", e);
     }
     return baseLista;
 }
