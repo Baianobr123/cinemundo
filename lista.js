@@ -1,5 +1,5 @@
 // ==========================================
-// CONFIGURAÇÃO DOS SERVIDORES (MÚLTIPLOS)
+// CONFIGURAÇÃO DOS SERVIDORES
 // ==========================================
 const XTREAM_SERVIDORES = {
     servidor1: {
@@ -37,20 +37,17 @@ const XTREAM_SERVIDORES = {
 // Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-// Proxy otimizado para lidar com requisições API contendo parâmetros query
-const PROXY_CORS = "https://api.allorigins.win/raw?url=";
-
-// Função para contornar Mixed Content (HTTP em páginas HTTPS)
-function criarUrlProxy(url) {
-    if (!url) return url;
-    if (window.location.protocol === 'https:' && url.startsWith('http:')) {
-        return PROXY_CORS + encodeURIComponent(url);
+// FUNÇÃO PONTE: Redireciona a requisição para liberar o CORS no GitHub Pages
+function aplicarPonteCORS(urlOriginal) {
+    if (!urlOriginal) return urlOriginal;
+    if (window.location.protocol === 'https:' && urlOriginal.startsWith('http:')) {
+        return `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`;
     }
-    return url;
+    return urlOriginal;
 }
 
 // ==========================================
-// MOTOR DE BUSCA E INTEGRAÇÃO DE CATEGORIAS
+// MOTOR DE BUSCA E INTEGRAÇÃO
 // ==========================================
 async function carregarDadosXtream() {
     const server = XTREAM_CONFIG.server;
@@ -77,13 +74,13 @@ async function carregarDadosXtream() {
     try {
         // 1. CARREGAR CANAIS (LIVE STREAM)
         const catLiveMap = {};
-        const resCatLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_categories`));
+        const resCatLive = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_live_categories`));
         if (resCatLive.ok) {
             const cats = await resCatLive.json();
             if (Array.isArray(cats)) cats.forEach(c => catLiveMap[c.category_id] = c.category_name);
         }
 
-        const resLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_streams`));
+        const resLive = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_live_streams`));
         if (resLive.ok) {
             const liveData = await resLive.json();
             if (Array.isArray(liveData)) {
@@ -109,13 +106,13 @@ async function carregarDadosXtream() {
 
         // 2. CARREGAR FILMES (VOD MOVIES)
         const catMoviesMap = {};
-        const resCatMovies = await fetch(criarUrlProxy(`${baseUrl}&action=get_vod_categories`));
+        const resCatMovies = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_vod_categories`));
         if (resCatMovies.ok) {
             const cats = await resCatMovies.json();
             if (Array.isArray(cats)) cats.forEach(c => catMoviesMap[c.category_id] = c.category_name);
         }
 
-        const resMovies = await fetch(criarUrlProxy(`${baseUrl}&action=get_vod_streams`));
+        const resMovies = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_vod_streams`));
         if (resMovies.ok) {
             const moviesData = await resMovies.json();
             if (Array.isArray(moviesData)) {
@@ -137,13 +134,13 @@ async function carregarDadosXtream() {
 
         // 3. CARREGAR SÉRIES E ANIMES
         const catSeriesMap = {};
-        const resCatSeries = await fetch(criarUrlProxy(`${baseUrl}&action=get_series_categories`));
+        const resCatSeries = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_series_categories`));
         if (resCatSeries.ok) {
             const cats = await resCatSeries.json();
             if (Array.isArray(cats)) cats.forEach(c => catSeriesMap[c.category_id] = c.category_name);
         }
 
-        const resSeries = await fetch(criarUrlProxy(`${baseUrl}&action=get_series`));
+        const resSeries = await fetch(aplicarPonteCORS(`${baseUrl}&action=get_series`));
         if (resSeries.ok) {
             const seriesData = await resSeries.json();
             if (Array.isArray(seriesData)) {
@@ -171,7 +168,7 @@ async function carregarDadosXtream() {
             }
         }
     } catch (e) {
-        console.error("Erro na busca de dados:", e);
+        console.error("Erro na busca de dados via ponte:", e);
     }
     return baseLista;
 }
