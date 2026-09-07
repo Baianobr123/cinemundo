@@ -553,9 +553,9 @@
                                 if (Array.isArray(listaEps)) {
                                     listaEps.forEach(ep => {
                                         const epId = ep.id || ep.stream_id || ep.episode_num;
-                                        const epExt = ep.container_extension || ep.direct_source || 'mp4';
                                         
-                                        const epUrl = `/series/${username}/${password}/${epId}.${epExt}`;
+                                        // Força a extensão .mp4 para evitar erro de MIME type no navegador
+                                        const epUrl = `/series/${username}/${password}/${epId}.mp4`;
                                         const epNome = `T${tempNum} - Ep. ${ep.episode_num || (contadorIndex + 1)}: ${ep.title || 'Episódio'}`;
                                         const uniqueEpId = `ep_${seriesId}_${epId}`;
 
@@ -595,8 +595,7 @@
                                         container.appendChild(el);
                                         contadorIndex++;
                                     });
-                                }
-                            });
+                                });
 
                             if (playlistEpisodios.length > 0) {
                                 executarEpisodioPorIndice(0);
