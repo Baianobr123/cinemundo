@@ -68,6 +68,7 @@ async function carregarDadosXtream() {
     }
 
     try {
+        // 1. Carregar Canais ao Vivo
         const catLiveMap = {};
         const resCatLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_categories`));
         if (resCatLive.ok) {
@@ -99,6 +100,7 @@ async function carregarDadosXtream() {
             }
         }
 
+        // 2. Carregar Filmes (VOD)
         const catMoviesMap = {};
         const resCatMovies = await fetch(criarUrlProxy(`${baseUrl}&action=get_vod_categories`));
         if (resCatMovies.ok) {
@@ -126,6 +128,7 @@ async function carregarDadosXtream() {
             }
         }
 
+        // 3. Carregar Séries
         const catSeriesMap = {};
         const resCatSeries = await fetch(criarUrlProxy(`${baseUrl}&action=get_series_categories`));
         if (resCatSeries.ok) {
@@ -153,7 +156,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
-                            url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
+                            url: `${server}/series/${username}/${password}/${item.series_id}`,
                             tipoOriginal: tipo
                         });
                     }
