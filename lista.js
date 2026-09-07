@@ -37,11 +37,11 @@ const XTREAM_SERVIDORES = {
 // Define o Servidor 3 como padrão
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor3;
 
-// FUNÇÃO PONTE: Converte URLs HTTP em conexões HTTPS seguras aceitas pelo GitHub Pages
+// FUNÇÃO PONTE: Contorna o bloqueio HTTPS/HTTP usando serviço seguro de rota
 function aplicarPonteCORS(urlOriginal) {
     if (!urlOriginal) return urlOriginal;
     if (window.location.protocol === 'https:' && urlOriginal.startsWith('http:')) {
-        return `https://corsproxy.io/?${encodeURIComponent(urlOriginal)}`;
+        return `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`;
     }
     return urlOriginal;
 }
