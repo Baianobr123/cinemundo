@@ -54,13 +54,13 @@
             background: var(--accent-red); 
             color: #fff; 
             border: none; 
-            padding: 8px 10px; 
+            padding: 8px 12px; 
             border-radius: 6px; 
             outline: none; 
-            font-size: 0.8rem; 
+            font-size: 0.85rem; 
             font-weight: 600; 
             cursor: pointer;
-            max-width: 160px;
+            max-width: 180px;
         }
 
         .nav-tabs { 
@@ -180,6 +180,7 @@
     <header>
         <div class="header-top">
             <div class="logo" onclick="irParaHome()">Cine Mundo<span> BHS</span></div>
+            <!-- SELETOR DE SERVIDORES RESTAURADO -->
             <select id="serverSelect" class="server-select" onchange="trocarServidor(this.value)"></select>
         </div>
 
@@ -271,6 +272,7 @@
 
         function inicializarSeletorServidores() {
             const select = document.getElementById('serverSelect');
+            if(!select) return;
             select.innerHTML = '';
             if (typeof XTREAM_SERVIDORES !== 'undefined') {
                 Object.keys(XTREAM_SERVIDORES).forEach(key => {
@@ -305,9 +307,9 @@
             
             const timeoutSeguranca = setTimeout(() => {
                 if (todosItens.length === 0) {
-                    msgElement.innerText = "Este servidor está demorando muito para responder. Escolha outra opção no topo!";
+                    msgElement.innerText = "Este servidor está demorando. Escolha outra opção no menu do topo!";
                 }
-            }, 8000);
+            }, 9000);
 
             try {
                 todosItens = await carregarDadosXtream();
@@ -327,7 +329,7 @@
                 renderizerCategorias();
             } catch (err) {
                 clearTimeout(timeoutSeguranca);
-                msgElement.innerText = "Erro ao carregar este servidor. Tente mudar de servidor acima.";
+                msgElement.innerText = "Erro ao carregar. Tente mudar de servidor no topo.";
             }
             document.getElementById('search').oninput = realizarBusca;
         }
@@ -346,7 +348,7 @@
             }
 
             if(grupos.length === 0) {
-                grid.innerHTML = `<div class="loading" style="grid-column: 1/-1;">Nenhum conteúdo nesta seção.</div>`;
+                grid.innerHTML = `<div class="loading" style="grid-column: 1/-1;">Nenhum conteúdo nesta seção ou servidor fora do ar. Tente outro servidor acima.</div>`;
                 return;
             }
 
@@ -525,7 +527,7 @@
             container.innerHTML = '<div style="padding:15px;color:var(--text-muted);">Processando episódios...</div>';
 
             try {
-                const { username, password } = XTREAM_CONFIG;
+                const { server, username, password } = XTREAM_CONFIG;
                 
                 let seriesId = item.series_id;
                 if (!seriesId) {
@@ -533,7 +535,7 @@
                     seriesId = partes.pop();
                 }
                 
-                const apiUrl = `/api-xtream/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
+                const apiUrl = criarUrlProxy(`${server}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`);
 
                 const res = await fetch(apiUrl);
                 
@@ -553,9 +555,7 @@
                                 if (Array.isArray(listaEps)) {
                                     listaEps.forEach(ep => {
                                         const epId = ep.id || ep.stream_id || ep.episode_num;
-                                        
-                                        // Força a extensão .mp4 para evitar erro de MIME type no navegador
-                                        const epUrl = `/series/${username}/${password}/${epId}.mp4`;
+                                        const epUrl = `${server}/series/${username}/${password}/${epId}.mp4`;
                                         const epNome = `T${tempNum} - Ep. ${ep.episode_num || (contadorIndex + 1)}: ${ep.title || 'Episódio'}`;
                                         const uniqueEpId = `ep_${seriesId}_${epId}`;
 
