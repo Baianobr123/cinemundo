@@ -16,7 +16,7 @@ const XTREAM_SERVIDORES = {
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "http://digitalbr.cloud",
+        server: "/api-xtream/",
         username: "06858757",     
         password: "70745896"       
     },
