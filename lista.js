@@ -16,7 +16,7 @@ const XTREAM_SERVIDORES = {
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "/api-xtream/",
+        server: "http://digitalbr.cloud",
         username: "06858757",     
         password: "70745896"       
     },
@@ -34,7 +34,6 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-// Deixando o Servidor 1 como padrão para abrir mais rápido
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
 const PROXY_CORS = "https://corsproxy.io/?";
