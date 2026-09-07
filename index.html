@@ -255,7 +255,6 @@
         let indiceEpisodioAtual = -1;
 
         const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
-        const PROXY_URL = "https://corsproxy.io/?";
 
         function obterHistorico() {
             try { return JSON.parse(localStorage.getItem('bhs_historico_vistos')) || []; }
@@ -526,7 +525,7 @@
             container.innerHTML = '<div style="padding:15px;color:var(--text-muted);">Processando episódios...</div>';
 
             try {
-                const { server, username, password } = XTREAM_CONFIG;
+                const { username, password } = XTREAM_CONFIG;
                 
                 let seriesId = item.series_id;
                 if (!seriesId) {
@@ -534,8 +533,8 @@
                     seriesId = partes.pop().split('.')[0];
                 }
                 
-                const rawUrl = `${server}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
-                const apiUrl = location.protocol === 'https:' ? PROXY_URL + encodeURIComponent(rawUrl) : rawUrl;
+                // Rota configurada via proxy do Netlify para evitar erros de HTTP em HTTPS
+                const apiUrl = `/api-xtream/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
 
                 const res = await fetch(apiUrl);
                 
@@ -557,14 +556,14 @@
                                         const epId = ep.id || ep.stream_id || ep.episode_num;
                                         const epExt = ep.container_extension || ep.direct_source || 'mp4';
                                         
-                                        const epUrl = `${server}/series/${username}/${password}/${epId}.${epExt}`;
+                                        const epUrl = `/series/${username}/${password}/${epId}.${epExt}`;
                                         const epNome = `T${tempNum} - Ep. ${ep.episode_num || (contadorIndex + 1)}: ${ep.title || 'Episódio'}`;
                                         const uniqueEpId = `ep_${seriesId}_${epId}`;
 
                                         playlistEpisodios.push({ 
                                             url: epUrl, 
                                             nome: epNome, 
-                                            tipo: 'vod-series', 
+                                            tipo: 'series', 
                                             index: contadorIndex,
                                             idHistorico: uniqueEpId 
                                         });
@@ -655,44 +654,43 @@
             video.removeAttribute('src');
             video.load();
 
-            let targetUrl = url;
-            if (location.protocol === 'https:' && targetUrl.startsWith('http:')) {
-                targetUrl = PROXY_URL + encodeURIComponent(targetUrl);
-            }
+            const isHlsStream = url.endsWith('.m3u8') || tipo === 'tv' || tipo === '24h' || tipo === 'series' || tipo === 'anime';
 
-            if (tipo === 'tv' || tipo === '24h') {
-                if (Hls.isSupported()) {
-                    hlsInstance = new Hls({
-                        enableWorker: true,
-                        lowLatencyMode: true,
-                        backBufferLength: 0,
-                        maxBufferLength: 8,
-                        maxMaxBufferLength: 15
-                    });
-                    hlsInstance.loadSource(targetUrl);
-                    hlsInstance.attachMedia(video);
-                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-                } else {
-                    video.src = targetUrl;
+            if (isHlsStream && Hls.isSupported()) {
+                hlsInstance = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 30,
+                    maxBufferLength: 30
+                });
+                hlsInstance.loadSource(url);
+                hlsInstance.attachMedia(video);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
                     video.play().catch(() => {});
-                }
-            } else {
-                if (targetUrl.includes('.m3u8')) {
-                    if (Hls.isSupported()) {
-                        hlsInstance = new Hls();
-                        hlsInstance.loadSource(targetUrl);
-                        hlsInstance.attachMedia(video);
-                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        video.src = targetUrl;
-                        video.play().catch(() => {});
+                });
+                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hlsInstance.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hlsInstance.recoverMediaError();
+                                break;
+                            default:
+                                hlsInstance.destroy();
+                                break;
+                        }
                     }
-                } else {
-                    video.src = targetUrl;
-                    video.play().catch((err) => {
-                        console.error("Erro ao reproduzir arquivo direto:", err);
-                    });
-                }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHlsStream) {
+                video.src = url;
+                video.play().catch(() => {});
+            } else {
+                video.src = url;
+                video.play().catch((err) => {
+                    console.error("Erro ao reproduzir vídeo:", err);
+                });
             }
         }
 
