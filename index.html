@@ -530,10 +530,9 @@
                 let seriesId = item.series_id;
                 if (!seriesId) {
                     const partes = item.url.split('/');
-                    seriesId = partes.pop().split('.')[0];
+                    seriesId = partes.pop();
                 }
                 
-                // Rota configurada via proxy do Netlify para evitar erros de HTTP em HTTPS
                 const apiUrl = `/api-xtream/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
 
                 const res = await fetch(apiUrl);
@@ -654,38 +653,18 @@
             video.removeAttribute('src');
             video.load();
 
-            const isHlsStream = url.endsWith('.m3u8') || tipo === 'tv' || tipo === '24h' || tipo === 'series' || tipo === 'anime';
+            const isHlsStream = url.endsWith('.m3u8');
 
             if (isHlsStream && Hls.isSupported()) {
                 hlsInstance = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 30,
-                    maxBufferLength: 30
+                    lowLatencyMode: true
                 });
                 hlsInstance.loadSource(url);
                 hlsInstance.attachMedia(video);
                 hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
                     video.play().catch(() => {});
                 });
-                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                hlsInstance.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                hlsInstance.recoverMediaError();
-                                break;
-                            default:
-                                hlsInstance.destroy();
-                                break;
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl') && isHlsStream) {
-                video.src = url;
-                video.play().catch(() => {});
             } else {
                 video.src = url;
                 video.play().catch((err) => {
