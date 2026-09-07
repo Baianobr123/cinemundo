@@ -95,7 +95,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
                             group: grupo,
-                            url: `/live/${username}/${password}/${item.stream_id}.m3u8`,
+                            url: `/live/${username}/${password}/${item.stream_id}.ts`,
                             tipoOriginal: tipo
                         });
                     }
@@ -159,7 +159,7 @@ async function carregarDadosXtream() {
                             nome: limparNome(item.name),
                             logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
                             group: grupo,
-                            url: `/series/${username}/${password}/${item.series_id}.m3u8`,
+                            url: `/series/${username}/${password}/${item.series_id}`,
                             tipoOriginal: tipo
                         });
                     }
