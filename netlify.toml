@@ -3,24 +3,32 @@
   to = "http://digitalbr.cloud/:splat"
   status = 200
   force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
 
 [[redirects]]
   from = "/live/*"
   to = "http://digitalbr.cloud/live/:splat"
   status = 200
   force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
 
 [[redirects]]
   from = "/movie/*"
   to = "http://digitalbr.cloud/movie/:splat"
   status = 200
   force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
 
 [[redirects]]
   from = "/series/*"
   to = "http://digitalbr.cloud/series/:splat"
   status = 200
   force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
 
 [[redirects]]
   from = "/*"
