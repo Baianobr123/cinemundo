@@ -111,8 +111,9 @@ async function carregarDadosXtream() {
                             category_id: item.category_id,
                             url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
                             stream_url: `${server}/live/${username}/${password}/${item.stream_id}.m3u8`,
-                            tipoOriginal: tipoGeral,
-                            type: tipoGeral
+                            tipoOriginal: grupo,
+                            type: grupo,
+                            tipoGeral: tipoGeral
                         });
                     }
                 });
@@ -156,8 +157,9 @@ async function carregarDadosXtream() {
                             category_id: item.category_id,
                             url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
                             stream_url: `${server}/movie/${username}/${password}/${item.stream_id}.${ext}`,
-                            tipoOriginal: "filme",
-                            type: "filme"
+                            tipoOriginal: grupo,
+                            type: grupo,
+                            tipoGeral: "filme"
                         });
                     }
                 });
@@ -205,8 +207,9 @@ async function carregarDadosXtream() {
                             category_id: item.category_id,
                             url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
                             stream_url: `${server}/series/${username}/${password}/${item.series_id}.m3u8`,
-                            tipoOriginal: tipoGeral,
-                            type: tipoGeral
+                            tipoOriginal: grupo,
+                            type: grupo,
+                            tipoGeral: tipoGeral
                         });
                     }
                 });
@@ -221,40 +224,38 @@ async function carregarDadosXtream() {
     return baseLista;
 }
 
-// Intercepta os cliques no seu layout para desenhar os cards na tela
-document.addEventListener("click", function (e) {
-    const cardCat = e.target.closest(".card-categoria, [onclick*='abrirCategoria']");
-    if (cardCat) {
-        const tituloEl = cardCat.querySelector("h3, .title, strong") || cardCat;
-        const nomeCategoria = tituloEl.innerText.split("\n")[0].trim();
-        
-        setTimeout(() => {
-            renderizarCardsCustom(nomeCategoria);
-        }, 50);
+// Reproduzir vídeo sem baixar arquivo .m3u8
+function tocarStream(url, titulo) {
+    let playerModal = document.getElementById("player-modal");
+    if (!playerModal) {
+        playerModal = document.createElement("div");
+        playerModal.id = "player-modal";
+        playerModal.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;";
+        document.body.appendChild(playerModal);
     }
-});
-
-function renderizarCardsCustom(nomeCategoria) {
-    const container = document.querySelector("#conteudo-principal, #grid-conteudo, main, .content") || document.body;
-    const lista = window.listaCompletaSite || window.baseLista || [];
     
-    // Filtra pelo nome exato da categoria clicada
-    const itens = lista.filter(item => item.group === nomeCategoria || item.categoria === nomeCategoria);
-    
-    // Procura o container onde a lista vazia estava aparecendo
-    const areaCards = container.querySelector(".grid-cards, #cards-container, .lista-itens") || container;
-
-    if (itens.length > 0) {
-        let htmlCards = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 20px;">`;
-        itens.forEach(item => {
-            htmlCards += `
-                <div class="card-item" onclick="window.open('${item.url}', '_blank')" style="background: #121829; border-radius: 8px; overflow: hidden; cursor: pointer; text-align: center;">
-                    <img src="${item.logo}" alt="${item.nome}" style="width: 100%; height: 210px; object-fit: cover;" onerror="this.src='https://images.tmdb.org/t/p/w500/orS79T06mX6Zmdorv5g7Zf7fV4B.jpg';">
-                    <div style="padding: 8px; color: #fff; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nome}</div>
-                </div>
-            `;
-        });
-        htmlCards += `</div>`;
-        areaCards.innerHTML = htmlCards;
-    }
+    playerModal.innerHTML = `
+        <div style="width: 90%; max-width: 900px; background: #121829; border-radius: 8px; padding: 15px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="color:#fff; font-size: 16px;">${titulo}</h3>
+                <button onclick="document.getElementById('player-modal').remove()" style="background:#e50914; color:#fff; border:none; padding: 5px 12px; border-radius: 4px; cursor:pointer;">Fechar X</button>
+            </div>
+            <iframe src="https://m3u8-player.com/embed.php?url=${encodeURIComponent(url)}" style="width:100%; height: 480px; border:none; border-radius: 6px;" allowfullscreen></iframe>
+        </div>
+    `;
 }
+
+// Intercepta e aplica reprodução no player
+document.addEventListener("click", function(e) {
+    const cardItem = e.target.closest(".card-item");
+    if (cardItem) {
+        const onclickAttr = cardItem.getAttribute("onclick") || "";
+        const match = onclickAttr.match(/'(http[^']+)'/);
+        if (match && match[1]) {
+            e.preventDefault();
+            e.stopPropagation();
+            const titulo = cardItem.querySelector("h4, span, p")?.innerText || "Reproduzindo";
+            tocarStream(match[1], titulo);
+        }
+    }
+}, true);
