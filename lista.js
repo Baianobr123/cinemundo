@@ -4,31 +4,31 @@
 const XTREAM_SERVIDORES = {
     servidor1: {
         nome: "Servidor 1",
-        server: "http://xewte.top:80", 
+        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://xewte.top:80", 
         username: "20264972071740",     
         password: "185660543698"       
     },
     servidor2: {
         nome: "Servidor 2",
-        server: "http://p2toptz.pro:80", 
+        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://p2toptz.pro:80", 
         username: "111111",     
         password: "222222"       
     },
     servidor3: {
         nome: "Servidor 3 (Estável)",
-        server: "https://digitalbr.cloud",
+        server: "https://cinemundo-proxy.onrender.com/proxy?url=https://digitalbr.cloud",
         username: "06858757",     
         password: "70745896"       
     },
     servidor4: {
         nome: "Servidor 4",
-        server: "https://45.12.1.96:80", 
+        server: "https://cinemundo-proxy.onrender.com/proxy?url=https://45.12.1.96:80", 
         username: "001062",     
         password: "vymrux"       
     },
     servidor5: {
         nome: "Servidor 5",
-        server: "http://phs.lat", 
+        server: "https://cinemundo-proxy.onrender.com/proxy?url=http://phs.lat", 
         username: "243588267208",     
         password: "991"       
     }
