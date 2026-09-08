@@ -255,8 +255,6 @@
         let indiceEpisodioAtual = -1;
 
         const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
-        
-        // Proxy atualizado do Render (substituiu o antigo corsproxy.io)
         const PROXY_URL = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
         function obterHistorico() {
@@ -595,7 +593,9 @@
             const epId = ep.id || ep.stream_id || ep.episode_num;
             const epExt = ep.container_extension || 'mp4';
             
-            const epUrl = `${server}/series/${username}/${password}/${epId}.${epExt}`;
+            const urlOriginal = `${server}/series/${username}/${password}/${epId}.${epExt}`;
+            const epUrl = typeof criarUrlProxy === 'function' ? criarUrlProxy(urlOriginal) : (location.protocol === 'https:' && urlOriginal.startsWith('http:') ? PROXY_URL + encodeURIComponent(urlOriginal) : urlOriginal);
+            
             const epNumFormatado = ep.episode_num || (contadorIndex + 1);
             const epNome = `T${tempNum} - Ep. ${epNumFormatado}: ${ep.title || 'Episódio'}`;
             const uniqueEpId = `ep_${seriesId}_${epId}`;
@@ -674,16 +674,12 @@
             video.load();
 
             let targetUrl = url;
-            
-            if (location.protocol === 'https:' && targetUrl.startsWith('http:')) {
-                targetUrl = PROXY_URL + encodeURIComponent(targetUrl);
-            }
 
             if (tipo === 'tv' || tipo === '24h' || targetUrl.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls({
                         xhrSetup: function (xhr, endpoint) {
-                            if (location.protocol === 'https:' && endpoint.startsWith('http:')) {
+                            if (location.protocol === 'https:' && endpoint.startsWith('http:') && !endpoint.includes('onrender.com')) {
                                 xhr.open('GET', PROXY_URL + encodeURIComponent(endpoint), true);
                             }
                         }
@@ -699,7 +695,6 @@
                         if (data.fatal) {
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.error("Erro de rede no canal ao vivo.");
                                     hlsInstance.startLoad();
                                     break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
