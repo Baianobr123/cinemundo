@@ -4,33 +4,33 @@
 const XTREAM_SERVIDORES = {
     servidor1: {
         nome: "Servidor 1",
-        server: "http://xewte.top:80", 
-        username: "20264972071740",     
-        password: "185660543698"       
+        server: "http://falxntc.sbs", 
+        username: "348754786",     
+        password: "826234227"       
     },
     servidor2: {
         nome: "Servidor 2",
-        server: "http://p2toptz.pro:80", 
-        username: "111111",     
-        password: "222222"       
+        server: "http://2rofcafe2.net:80", 
+        username: "car014495",     
+        password: "PV57rs111"       
     },
     servidor3: {
-        nome: "Servidor 3 (Estável)",
-        server: "https://digitalbr.cloud",
-        username: "06858757",     
-        password: "70745896"       
+        nome: "Servidor 3",
+        server: "http://play.dnsacc.vip",
+        username: "7398225033",     
+        password: "5fgkc5lu8j"       
     },
     servidor4: {
         nome: "Servidor 4",
-        server: "http://45.12.1.96:80", 
-        username: "001062",     
-        password: "vymrux"       
+        server: "http://185.66.90.151:80", 
+        username: "LeticiaMotaV",     
+        password: "cm9GJ7"       
     },
     servidor5: {
         nome: "Servidor 5",
-        server: "http://phs.lat", 
-        username: "243588267208",     
-        password: "991"       
+        server: "http://wareztv.io", 
+        username: "15172465",     
+        password: "18543598"       
     }
 };
 
