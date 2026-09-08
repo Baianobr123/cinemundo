@@ -34,7 +34,7 @@ const XTREAM_SERVIDORES = {
     }
 };
 
-let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
+let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor5;
 
 const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
