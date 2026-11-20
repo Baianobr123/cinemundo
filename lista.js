@@ -4,37 +4,13 @@
 const XTREAM_SERVIDORES = {
     servidor1: {
         nome: "Servidor 1",
-        server: "http://falxntc.sbs", 
-        username: "348754786",     
-        password: "826234227"       
-    },
-    servidor2: {
-        nome: "Servidor 2",
-        server: "http://2rofcafe2.net:80", 
-        username: "car014495",     
-        password: "PV57rs111"       
-    },
-    servidor3: {
-        nome: "Servidor 3",
-        server: "http://play.dnsacc.vip",
-        username: "7398225033",     
-        password: "5fgkc5lu8j"       
-    },
-    servidor4: {
-        nome: "Servidor 4",
-        server: "http://185.66.90.151:80", 
-        username: "LeticiaMotaV",     
-        password: "cm9GJ7"       
-    },
-    servidor5: {
-        nome: "Servidor 5",
-        server: "http://wareztv.io", 
-        username: "15172465",     
-        password: "18543598"       
+        server: "http://airloo.xyz:8880", 
+        username: "516965862",     
+        password: "421230446"       
     }
 };
 
-let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor5;
+let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
 const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
 
@@ -64,105 +40,103 @@ async function carregarDadosXtream() {
         return nome ? nome.replace(/^[^\s|]+\s*\|\s*/gi, "").trim() : "";
     }
 
+    // Função auxiliar para buscar direto com timeout
+    async function fetchDireto(url) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+        try {
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn("Aviso: Demorou ou falhou.", url);
+        }
+        return [];
+    }
+
     try {
-        // 1. Carregar Canais ao Vivo
-        const catLiveMap = {};
-        const resCatLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_categories`));
-        if (resCatLive.ok) {
-            const cats = await resCatLive.json();
-            if (Array.isArray(cats)) cats.forEach(c => catLiveMap[c.category_id] = c.category_name);
+        // 1. TV
+        console.log("Buscando TV...");
+        const catLive = await fetchDireto(`${baseUrl}&action=get_live_categories`);
+        const mapLive = {};
+        if (Array.isArray(catLive)) catLive.forEach(c => mapLive[c.category_id] = c.category_name);
+
+        const liveData = await fetchDireto(`${baseUrl}&action=get_live_streams`);
+        if (Array.isArray(liveData)) {
+            liveData.forEach((item, index) => {
+                const grupo = mapLive[item.category_id] || "TV ao Vivo";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) ? "24h" : "tv";
+                    const urlOriginal = `${server}/live/${username}/${password}/${item.stream_id}.m3u8`;
+                    baseLista.push({
+                        id_global: `tv_${item.stream_id || index}`,
+                        nome: limparNome(item.name),
+                        logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                        group: grupo,
+                        url: criarUrlProxy(urlOriginal),
+                        tipoOriginal: tipo
+                    });
+                }
+            });
         }
 
-        const resLive = await fetch(criarUrlProxy(`${baseUrl}&action=get_live_streams`));
-        if (resLive.ok) {
-            const liveData = await resLive.json();
-            if (Array.isArray(liveData)) {
-                liveData.forEach((item, index) => {
-                    const grupo = catLiveMap[item.category_id] || "TV ao Vivo";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "tv";
-                        if (grupo.toLowerCase().includes("24h") || item.name.toLowerCase().includes("24h")) {
-                            tipo = "24h";
-                        }
-                        const urlOriginal = `${server}/live/${username}/${password}/${item.stream_id}.m3u8`;
-                        baseLista.push({
-                            id_global: `tv_${item.stream_id || index}`,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
-                            group: grupo,
-                            url: criarUrlProxy(urlOriginal),
-                            tipoOriginal: tipo
-                        });
+        // 2. FILMES
+        console.log("Buscando Filmes...");
+        const catVod = await fetchDireto(`${baseUrl}&action=get_vod_categories`);
+        const mapVod = {};
+        if (Array.isArray(catVod)) catVod.forEach(c => mapVod[c.category_id] = c.category_name);
+
+        const vodData = await fetchDireto(`${baseUrl}&action=get_vod_streams`);
+        if (Array.isArray(vodData)) {
+            vodData.forEach((item, index) => {
+                const grupo = mapVod[item.category_id] || "Filmes";
+                if (ehValido(item.name, grupo)) {
+                    const urlOriginal = `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`;
+                    baseLista.push({
+                        id_global: `movie_${item.stream_id || index}`,
+                        nome: limparNome(item.name),
+                        logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
+                        group: grupo,
+                        url: criarUrlProxy(urlOriginal),
+                        tipoOriginal: "filme"
+                    });
+                }
+            });
+        }
+
+        // 3. SÉRIES
+        console.log("Buscando Séries...");
+        const catSer = await fetchDireto(`${baseUrl}&action=get_series_categories`);
+        const mapSer = {};
+        if (Array.isArray(catSer)) catSer.forEach(c => mapSer[c.category_id] = c.category_name);
+
+        const serData = await fetchDireto(`${baseUrl}&action=get_series`);
+        if (Array.isArray(serData)) {
+            serData.forEach((item, index) => {
+                const grupo = mapSer[item.category_id] || "Séries";
+                if (ehValido(item.name, grupo)) {
+                    let tipo = "series";
+                    const gLow = grupo.toLowerCase();
+                    const nLow = item.name.toLowerCase();
+                    if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime")) {
+                        tipo = "anime";
                     }
-                });
-            }
+                    const urlOriginal = `${server}/series/${username}/${password}/${item.series_id}`;
+                    baseLista.push({
+                        id_global: `series_${item.series_id || index}`,
+                        series_id: item.series_id,
+                        nome: limparNome(item.name),
+                        logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
+                        group: grupo,
+                        url: criarUrlProxy(urlOriginal),
+                        tipoOriginal: tipo
+                    });
+                }
+            });
         }
 
-        // 2. Carregar Filmes (VOD)
-        const catMoviesMap = {};
-        const resCatMovies = await fetch(criarUrlProxy(`${baseUrl}&action=get_vod_categories`));
-        if (resCatMovies.ok) {
-            const cats = await resCatMovies.json();
-            if (Array.isArray(cats)) cats.forEach(c => catMoviesMap[c.category_id] = c.category_name);
-        }
+        console.log("Finalizado. Total de itens:", baseLista.length);
 
-        const resMovies = await fetch(criarUrlProxy(`${baseUrl}&action=get_vod_streams`));
-        if (resMovies.ok) {
-            const moviesData = await resMovies.json();
-            if (Array.isArray(moviesData)) {
-                moviesData.forEach((item, index) => {
-                    const grupo = catMoviesMap[item.category_id] || "Filmes";
-                    if (ehValido(item.name, grupo)) {
-                        const urlOriginal = `${server}/movie/${username}/${password}/${item.stream_id}.${item.container_extension || 'mp4'}`;
-                        baseLista.push({
-                            id_global: `movie_${item.stream_id || index}`,
-                            nome: limparNome(item.name),
-                            logo: item.stream_icon && item.stream_icon.startsWith('http') ? item.stream_icon : capaPadrao,
-                            group: grupo,
-                            url: criarUrlProxy(urlOriginal),
-                            tipoOriginal: "filme"
-                        });
-                    }
-                });
-            }
-        }
-
-        // 3. Carregar Séries
-        const catSeriesMap = {};
-        const resCatSeries = await fetch(criarUrlProxy(`${baseUrl}&action=get_series_categories`));
-        if (resCatSeries.ok) {
-            const cats = await resCatSeries.json();
-            if (Array.isArray(cats)) cats.forEach(c => catSeriesMap[c.category_id] = c.category_name);
-        }
-
-        const resSeries = await fetch(criarUrlProxy(`${baseUrl}&action=get_series`));
-        if (resSeries.ok) {
-            const seriesData = await resSeries.json();
-            if (Array.isArray(seriesData)) {
-                seriesData.forEach((item, index) => {
-                    const grupo = catSeriesMap[item.category_id] || "Séries";
-                    if (ehValido(item.name, grupo)) {
-                        let tipo = "series";
-                        const gLow = grupo.toLowerCase();
-                        const nLow = item.name.toLowerCase();
-                        
-                        if (gLow.includes("anime") || gLow.includes("crunchyroll") || gLow.includes("otaku") || gLow.includes("desenho") || gLow.includes("animation") || nLow.includes("anime")) {
-                            tipo = "anime";
-                        }
-                        const urlOriginal = `${server}/series/${username}/${password}/${item.series_id}`;
-                        baseLista.push({
-							id_global: `series_${item.series_id || index}`,
-                            series_id: item.series_id,
-                            nome: limparNome(item.name),
-                            logo: item.cover && item.cover.startsWith('http') ? item.cover : capaPadrao,
-                            group: grupo,
-                            url: criarUrlProxy(urlOriginal),
-                            tipoOriginal: tipo
-                        });
-                    }
-                });
-            }
-        }
     } catch (e) {
         console.error("Erro geral na sincronização:", e);
     }
