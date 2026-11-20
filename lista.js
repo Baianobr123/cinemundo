@@ -12,7 +12,8 @@ const XTREAM_SERVIDORES = {
 
 let XTREAM_CONFIG = XTREAM_SERVIDORES.servidor1;
 
-const PROXY_CORS = "https://cinemundo-proxy.onrender.com/proxy?url=";
+// NOVO PROXY (Mais rápido e confiável para GitHub Pages)
+const PROXY_CORS = "https://api.allorigins.win/raw?url=";
 
 function criarUrlProxy(url) {
     return PROXY_CORS + encodeURIComponent(url);
@@ -40,7 +41,6 @@ async function carregarDadosXtream() {
         return nome ? nome.replace(/^[^\s|]+\s*\|\s*/gi, "").trim() : "";
     }
 
-    // Agora forçamos TUDO a passar pelo proxy (que é seguro e aceita o GitHub Pages)
     async function fetchProxy(url) {
         try {
             const res = await fetch(criarUrlProxy(url));
@@ -53,7 +53,6 @@ async function carregarDadosXtream() {
 
     try {
         // 1. TV
-        console.log("Buscando TV...");
         const catLive = await fetchProxy(`${baseUrl}&action=get_live_categories`);
         const mapLive = {};
         if (Array.isArray(catLive)) catLive.forEach(c => mapLive[c.category_id] = c.category_name);
@@ -78,7 +77,6 @@ async function carregarDadosXtream() {
         }
 
         // 2. FILMES
-        console.log("Buscando Filmes...");
         const catVod = await fetchProxy(`${baseUrl}&action=get_vod_categories`);
         const mapVod = {};
         if (Array.isArray(catVod)) catVod.forEach(c => mapVod[c.category_id] = c.category_name);
@@ -102,7 +100,6 @@ async function carregarDadosXtream() {
         }
 
         // 3. SÉRIES
-        console.log("Buscando Séries...");
         const catSer = await fetchProxy(`${baseUrl}&action=get_series_categories`);
         const mapSer = {};
         if (Array.isArray(catSer)) catSer.forEach(c => mapSer[c.category_id] = c.category_name);
@@ -131,8 +128,6 @@ async function carregarDadosXtream() {
                 }
             });
         }
-
-        console.log("Finalizado. Total de itens:", baseLista.length);
 
     } catch (e) {
         console.error("Erro geral na sincronização:", e);
