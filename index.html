@@ -304,11 +304,12 @@
             const msgElement = document.getElementById('loading-msg');
             msgElement.style.display = 'block';
             
+            // AGORA O TEMPO DE ESPERA É DE 45 SEGUNDOS
             const timeoutSeguranca = setTimeout(() => {
                 if (todosItens.length === 0) {
                     msgElement.innerText = "Este servidor está demorando muito para responder. Escolha outra opção no topo!";
                 }
-            }, 8000);
+            }, 120000);
 
             try {
                 todosItens = await carregarDadosXtream();
@@ -535,6 +536,7 @@
                 }
                 
                 const rawUrl = `${server}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
+                // Aqui mantemos o Proxy para evitar erro de CORS ao puxar episódios
                 const apiUrl = location.protocol === 'https:' ? PROXY_URL + encodeURIComponent(rawUrl) : rawUrl;
 
                 const res = await fetch(apiUrl);
