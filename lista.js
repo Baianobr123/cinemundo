@@ -40,16 +40,13 @@ async function carregarDadosXtream() {
         return nome ? nome.replace(/^[^\s|]+\s*\|\s*/gi, "").trim() : "";
     }
 
-    // Função auxiliar para buscar direto com timeout
-    async function fetchDireto(url) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+    // Agora forçamos TUDO a passar pelo proxy (que é seguro e aceita o GitHub Pages)
+    async function fetchProxy(url) {
         try {
-            const res = await fetch(url, { signal: controller.signal });
-            clearTimeout(timeoutId);
+            const res = await fetch(criarUrlProxy(url));
             if (res.ok) return await res.json();
         } catch (e) {
-            console.warn("Aviso: Demorou ou falhou.", url);
+            console.warn("Erro na requisição:", url);
         }
         return [];
     }
@@ -57,11 +54,11 @@ async function carregarDadosXtream() {
     try {
         // 1. TV
         console.log("Buscando TV...");
-        const catLive = await fetchDireto(`${baseUrl}&action=get_live_categories`);
+        const catLive = await fetchProxy(`${baseUrl}&action=get_live_categories`);
         const mapLive = {};
         if (Array.isArray(catLive)) catLive.forEach(c => mapLive[c.category_id] = c.category_name);
 
-        const liveData = await fetchDireto(`${baseUrl}&action=get_live_streams`);
+        const liveData = await fetchProxy(`${baseUrl}&action=get_live_streams`);
         if (Array.isArray(liveData)) {
             liveData.forEach((item, index) => {
                 const grupo = mapLive[item.category_id] || "TV ao Vivo";
@@ -82,11 +79,11 @@ async function carregarDadosXtream() {
 
         // 2. FILMES
         console.log("Buscando Filmes...");
-        const catVod = await fetchDireto(`${baseUrl}&action=get_vod_categories`);
+        const catVod = await fetchProxy(`${baseUrl}&action=get_vod_categories`);
         const mapVod = {};
         if (Array.isArray(catVod)) catVod.forEach(c => mapVod[c.category_id] = c.category_name);
 
-        const vodData = await fetchDireto(`${baseUrl}&action=get_vod_streams`);
+        const vodData = await fetchProxy(`${baseUrl}&action=get_vod_streams`);
         if (Array.isArray(vodData)) {
             vodData.forEach((item, index) => {
                 const grupo = mapVod[item.category_id] || "Filmes";
@@ -106,11 +103,11 @@ async function carregarDadosXtream() {
 
         // 3. SÉRIES
         console.log("Buscando Séries...");
-        const catSer = await fetchDireto(`${baseUrl}&action=get_series_categories`);
+        const catSer = await fetchProxy(`${baseUrl}&action=get_series_categories`);
         const mapSer = {};
         if (Array.isArray(catSer)) catSer.forEach(c => mapSer[c.category_id] = c.category_name);
 
-        const serData = await fetchDireto(`${baseUrl}&action=get_series`);
+        const serData = await fetchProxy(`${baseUrl}&action=get_series`);
         if (Array.isArray(serData)) {
             serData.forEach((item, index) => {
                 const grupo = mapSer[item.category_id] || "Séries";
