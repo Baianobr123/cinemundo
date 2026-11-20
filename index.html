@@ -255,7 +255,8 @@
         let indiceEpisodioAtual = -1;
 
         const TMDB_KEY = "fd4dee61e7ac687a4a825cfd6f2f809c";
-        const PROXY_URL = "https://cinemundo-proxy.onrender.com/proxy?url=";
+        // NOVO PROXY AQUI PARA OS VÍDEOS
+        const PROXY_URL = "https://api.allorigins.win/raw?url=";
 
         function obterHistorico() {
             try { return JSON.parse(localStorage.getItem('bhs_historico_vistos')) || []; }
@@ -304,12 +305,12 @@
             const msgElement = document.getElementById('loading-msg');
             msgElement.style.display = 'block';
             
-            // AGORA O TEMPO DE ESPERA É DE 45 SEGUNDOS
+            // TEMPO DE ESPERA DE 45 SEGUNDOS
             const timeoutSeguranca = setTimeout(() => {
                 if (todosItens.length === 0) {
                     msgElement.innerText = "Este servidor está demorando muito para responder. Escolha outra opção no topo!";
                 }
-            }, 120000);
+            }, 45000);
 
             try {
                 todosItens = await carregarDadosXtream();
@@ -536,8 +537,8 @@
                 }
                 
                 const rawUrl = `${server}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
-                // Aqui mantemos o Proxy para evitar erro de CORS ao puxar episódios
-                const apiUrl = location.protocol === 'https:' ? PROXY_URL + encodeURIComponent(rawUrl) : rawUrl;
+                // Como estamos usando allorigins, usamos ele aqui também
+                const apiUrl = PROXY_URL + encodeURIComponent(rawUrl);
 
                 const res = await fetch(apiUrl);
                 if (!res.ok) throw new Error("Erro HTTP");
@@ -596,7 +597,8 @@
             const epExt = ep.container_extension || 'mp4';
             
             const urlOriginal = `${server}/series/${username}/${password}/${epId}.${epExt}`;
-            const epUrl = typeof criarUrlProxy === 'function' ? criarUrlProxy(urlOriginal) : (location.protocol === 'https:' && urlOriginal.startsWith('http:') ? PROXY_URL + encodeURIComponent(urlOriginal) : urlOriginal);
+            // O proxy de vídeo é aplicado aqui
+            const epUrl = PROXY_URL + encodeURIComponent(urlOriginal);
             
             const epNumFormatado = ep.episode_num || (contadorIndex + 1);
             const epNome = `T${tempNum} - Ep. ${epNumFormatado}: ${ep.title || 'Episódio'}`;
@@ -681,7 +683,7 @@
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls({
                         xhrSetup: function (xhr, endpoint) {
-                            if (location.protocol === 'https:' && endpoint.startsWith('http:') && !endpoint.includes('onrender.com')) {
+                            if (location.protocol === 'https:' && endpoint.startsWith('http:')) {
                                 xhr.open('GET', PROXY_URL + encodeURIComponent(endpoint), true);
                             }
                         }
